@@ -55,7 +55,7 @@ function describeObservation(obs, pending, shot) {
     case 'changed':
       return 'The screen changed. Here it is now. Check whether the step worked, then continue.';
     case 'typed':
-      return `The person typed something and then ${obs.via === 'enter' ? 'pressed Enter' : obs.via === 'tab' ? 'pressed Tab' : obs.via === 'click' ? `clicked${where(obs.click)}` : 'said they were done'}. Look closely at the screen: did the text land in ${target}, and is it complete? If it went into a different box (for example Subject instead of the message area) or is missing, kindly help fix that before moving on.`;
+      return `The person typed something and then ${obs.via === 'enter' ? 'pressed Enter' : obs.via === 'tab' ? 'pressed Tab' : obs.via === 'click' ? `clicked${where(obs.click)}` : 'said they were done'}. Look closely at the screen: did the text land in ${target}? Apps often reformat what was typed — an email address can turn into a contact's name (like "Arif") in a little bubble — and that is correct, not a mistake. Only if it clearly went into a different box (for example Subject instead of the message area) or is missing, kindly help fix it; otherwise move on.`;
     case 'scrolled':
       return 'The person scrolled. Here is the screen now.';
     case 'keys':
