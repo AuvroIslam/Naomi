@@ -71,6 +71,17 @@ function createIsland() {
     },
   });
   island.setIgnoreMouseEvents(true, { forward: true });
+  // Also track the cursor from here, so the pill is clickable the instant the mouse is on it
+  // (the renderer's hover events alone can lose a very quick click to the app underneath).
+  let overPill = false;
+  const hoverTimer = setInterval(() => {
+    if (!island || island.isDestroyed() || !pillRect) return;
+    const over = pointInRect(screen.getCursorScreenPoint(), pillRect);
+    if (over === overPill) return;
+    overPill = over;
+    island.setIgnoreMouseEvents(!over, { forward: true });
+  }, 50);
+  island.on('closed', () => clearInterval(hoverTimer));
   island.setAlwaysOnTop(true, 'pop-up-menu');
   island.loadFile(path.join(__dirname, '..', 'renderer', 'island', 'index.html'));
   island.once('ready-to-show', () => island.show());
