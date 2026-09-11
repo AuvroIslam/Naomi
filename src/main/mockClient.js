@@ -77,6 +77,7 @@ function resolve(step, size) {
 function createMockClient({ delayMs = 1200 } = {}) {
   let i = 0;
   return {
+    naomiScripted: true, // fixed script: no aim check
     beta: {
       messages: {
         async create(params) {

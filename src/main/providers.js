@@ -85,7 +85,11 @@ function systemText(system) {
   return typeof system === 'string' ? system : system.map((b) => b.text || '').join('\n');
 }
 
-function toOpenAIMessages(system, messages, { detail, keepImages = KEEP_IMAGES } = {}) {
+/**
+ * @param {Map<string, object>} [opts.extras] provider data to send back on earlier tool calls,
+ *   e.g. Gemini's thought signatures, keyed by tool call id.
+ */
+function toOpenAIMessages(system, messages, { detail, keepImages = KEEP_IMAGES, extras = null } = {}) {
   const out = [{ role: 'system', content: systemText(system) }];
 
   for (const m of messages) {
@@ -101,7 +105,12 @@ function toOpenAIMessages(system, messages, { detail, keepImages = KEEP_IMAGES }
         .join('\n');
       const calls = blocks
         .filter((b) => b.type === 'tool_use')
-        .map((b) => ({ id: b.id, type: 'function', function: { name: b.name, arguments: JSON.stringify(b.input ?? {}) } }));
+        .map((b) => ({
+          id: b.id,
+          type: 'function',
+          function: { name: b.name, arguments: JSON.stringify(b.input ?? {}) },
+          ...(extras && extras.get(b.id) ? { extra_content: extras.get(b.id) } : {}),
+        }));
       const msg = { role: 'assistant', content: text || (calls.length ? null : '') };
       if (calls.length) msg.tool_calls = calls;
       out.push(msg);
@@ -181,20 +190,28 @@ function fromOpenAIResponse(completion) {
 
 function createOpenAICompatClient({ provider, model, apiKey, OpenAIClass = OpenAI }) {
   const client = new OpenAIClass({ apiKey, baseURL: provider.baseURL, maxRetries: 1, timeout: 60_000 });
+  // Provider data that must travel with a tool call (Gemini's thought signatures), kept here
+  // rather than in the shared history so other providers never see it.
+  const extras = new Map();
   return {
     beta: {
       messages: {
         async create(params) {
           const body = {
             model,
-            messages: toOpenAIMessages(params.system, params.messages, { detail: provider.openai ? 'high' : undefined }),
+            messages: toOpenAIMessages(params.system, params.messages, { detail: provider.openai ? 'high' : undefined, extras }),
             tools: toOpenAITools(params.tools, !!provider.openai),
             tool_choice: 'auto',
             ...(provider.openai ? { parallel_tool_calls: false, max_completion_tokens: 8000 } : { max_tokens: 8000 }),
             // Gemma rejects Gemini's thinking settings, so extras only go to non-Gemma models.
             ...(provider.extra && !/^gemma/i.test(model) ? provider.extra : {}),
           };
-          return fromOpenAIResponse(await client.chat.completions.create(body));
+          const completion = await client.chat.completions.create(body);
+          const message = completion && completion.choices && completion.choices[0] && completion.choices[0].message;
+          for (const call of (message && message.tool_calls) || []) {
+            if (call && call.id && call.extra_content) extras.set(call.id, call.extra_content);
+          }
+          return fromOpenAIResponse(completion);
         },
       },
     },

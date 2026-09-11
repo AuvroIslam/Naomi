@@ -176,6 +176,7 @@ function createPracticeClient({ locate, delayMs = 900 }) {
   }
 
   return {
+    naomiScripted: true, // exact coordinates: no aim check needed
     beta: {
       messages: {
         async create(params) {

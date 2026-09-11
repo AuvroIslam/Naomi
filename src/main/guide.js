@@ -285,16 +285,47 @@ class GuideSession extends EventEmitter {
           return;
         }
         this.badPoints = 0;
-        this.steps++;
         let x = Number(input.x);
         let y = Number(input.y);
-        if (input.from_zoom && this.lastZoom) {
+        const zoomedAim = !!(input.from_zoom && this.lastZoom);
+        if (zoomedAim) {
           const z = this.lastZoom;
           x = z.region.x + (x * z.region.width) / z.width;
           y = z.region.y + (y * z.region.height) / z.height;
         }
         this.lastZoom = null;
         const image = { x: clamp(Math.round(x), 0, shot.width - 1), y: clamp(Math.round(y), 0, shot.height - 1) };
+
+        // Check the aim once before the person sees the dot: a magnified view with a red cross on
+        // the chosen spot. Skipped when the aim already came from a close look, and for scripted
+        // (practice) guides whose coordinates are exact.
+        if (this.zoom && !zoomedAim && !this.aimChecked && !(this.client && this.client.naomiScripted)) {
+          this.aimChecked = true;
+          const region = zoomRegion({ x: image.x, y: image.y, width: 300, height: 180 }, shot);
+          let content;
+          try {
+            const z = await this.zoom(region, shot, image);
+            this.lastZoom = { region, width: z.width, height: z.height };
+            const cx = Math.round(((image.x - region.x) * z.width) / region.width);
+            const cy = Math.round(((image.y - region.y) * z.height) / region.height);
+            const what = input.target ? `"${input.target}"` : 'the target';
+            content = [
+              {
+                type: 'text',
+                text: `Before the person sees the dot, check your aim. This magnified view is around the spot you chose, marked with a red cross at (${cx}, ${cy}) in this ${z.width}x${z.height} image. Call point again with the same words and from_zoom set to true: keep (${cx}, ${cy}) if the cross is exactly on ${what}, or give the exact center of ${what} in this image.`,
+              },
+              imageBlock(z),
+            ];
+          } catch {
+            this.lastZoom = null;
+            content = [{ type: 'text', text: 'Please call point again with the same values.' }];
+          }
+          if (this.stopped) return;
+          await this._send([{ type: 'tool_result', tool_use_id: tool.id, content }], shot, { closer: true });
+          return;
+        }
+        this.aimChecked = false;
+        this.steps++;
         this.emit('point', {
           step: this.steps,
           say: input.say,

@@ -256,10 +256,12 @@ function captureClean() {
   return withNaomiHidden(() => captureForClaude());
 }
 
-function captureZoom(region, shot) {
+// mark: a point in screenshot pixels to draw a cross on (for checking the aim), or null.
+function captureZoom(region, shot, mark = null) {
   const a = shot.toScreen({ x: region.x, y: region.y });
   const b = shot.toScreen({ x: region.x + region.width, y: region.y + region.height });
-  return withNaomiHidden(() => captureRegion({ x: a.x, y: a.y, width: b.x - a.x, height: b.y - a.y }));
+  const rect = { x: a.x, y: a.y, width: b.x - a.x, height: b.y - a.y };
+  return withNaomiHidden(() => captureRegion(rect, { mark: mark ? shot.toScreen(mark) : null }));
 }
 
 function signature() {

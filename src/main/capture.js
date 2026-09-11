@@ -51,7 +51,7 @@ async function captureForClaude({ maskRects = [] } = {}) {
  * A magnified view of part of the screen, captured at full physical resolution.
  * @param {{x,y,width,height}} rect  area in screen DIP
  */
-async function captureRegion(rect, { maskRects = [] } = {}) {
+async function captureRegion(rect, { maskRects = [], mark = null } = {}) {
   const display = primaryDisplay();
   const full = {
     width: Math.round(display.bounds.width * display.scaleFactor),
@@ -73,6 +73,18 @@ async function captureRegion(rect, { maskRects = [] } = {}) {
     .map((m) => rectToImage(m, size, display))
     .map((m) => ({ x: m.x - crop.x, y: m.y - crop.y, width: m.width, height: m.height }));
   maskBitmap(bitmap, crop.width, crop.height, masks);
+
+  // A red cross (with a white edge) on the spot Naomi is about to point at, so the AI can check its aim.
+  if (mark) {
+    const { drawCross } = require('./imageops');
+    const m = screenToImage(mark, size, display);
+    const cx = m.x - crop.x;
+    const cy = m.y - crop.y;
+    const arm = Math.max(10, Math.round(crop.width * 0.05));
+    const t = Math.max(2, Math.round(crop.width / 160));
+    drawCross(bitmap, crop.width, crop.height, cx, cy, arm + t, t * 3, { r: 255, g: 255, b: 255 });
+    drawCross(bitmap, crop.width, crop.height, cx, cy, arm, t, { r: 235, g: 30, b: 30 });
+  }
 
   const scale = Math.min(ZOOM_W / crop.width, ZOOM_H / crop.height, 4);
   const out = { width: Math.round(crop.width * scale), height: Math.round(crop.height * scale) };

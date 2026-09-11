@@ -85,4 +85,13 @@ function persistentChange(base, a, b, threshold = 6, ignore = null) {
   return counted ? changed / counted : 0;
 }
 
-module.exports = { maskBitmap, frameSignature, signatureDiff, volatileCells, markVolatile, persistentChange };
+// A plus-shaped mark centred on (cx, cy): used to show the AI exactly where it is about to point.
+function drawCross(buf, width, height, cx, cy, arm, thickness, color = { r: 235, g: 30, b: 30 }) {
+  const half = Math.floor(thickness / 2);
+  return maskBitmap(buf, width, height, [
+    { x: cx - arm, y: cy - half, width: arm * 2 + 1, height: thickness },
+    { x: cx - half, y: cy - arm, width: thickness, height: arm * 2 + 1 },
+  ], color);
+}
+
+module.exports = { maskBitmap, frameSignature, signatureDiff, volatileCells, markVolatile, persistentChange, drawCross };
