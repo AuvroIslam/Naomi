@@ -55,7 +55,7 @@ function describeObservation(obs, pending, shot) {
     case 'changed':
       return 'The screen changed. Here it is now. Check whether the step worked, then continue.';
     case 'typed':
-      return `The person typed something and then ${obs.via === 'enter' ? 'pressed Enter' : obs.via === 'tab' ? 'pressed Tab' : obs.via === 'click' ? `clicked${where(obs.click)}` : 'said they were done'}. Check the screen to see what they typed, then continue.`;
+      return `The person typed something and then ${obs.via === 'enter' ? 'pressed Enter' : obs.via === 'tab' ? 'pressed Tab' : obs.via === 'click' ? `clicked${where(obs.click)}` : 'said they were done'}. Look closely at the screen: did the text land in ${target}, and is it complete? If it went into a different box (for example Subject instead of the message area) or is missing, kindly help fix that before moving on.`;
     case 'scrolled':
       return 'The person scrolled. Here is the screen now.';
     case 'keys':
@@ -344,7 +344,7 @@ class GuideSession extends EventEmitter {
             content = [
               {
                 type: 'text',
-                text: `Before the person sees the dot, check your aim. This magnified view is around the spot you chose, marked with a red cross at (${cx}, ${cy}) in this ${z.width}x${z.height} image. Call point again with the same words and from_zoom set to true: keep (${cx}, ${cy}) if the cross is exactly on ${what}, or give the exact center of ${what} in this image.`,
+                text: `Before the person sees the dot, check your aim. This magnified view is around the spot you chose, marked with a red cross at (${cx}, ${cy}) in this ${z.width}x${z.height} image. Call point again with the same words and from_zoom set to true: keep (${cx}, ${cy}) if the cross is exactly on ${what}, or give the exact center of ${what} in this image.${input.action === 'type' ? " Boxes can look alike — for example an email's one-line Subject box and the large message area — so make sure the cross is in the right one." : ''}`,
               },
               imageBlock(z),
             ];
@@ -356,15 +356,26 @@ class GuideSession extends EventEmitter {
           await this._send([{ type: 'tool_result', tool_use_id: tool.id, content }], shot, { closer: true });
           return;
         }
+        // The aim check only refines where to point. Keep the step's words and action from the
+        // original call, even if the model rephrased them while re-pointing (e.g. "type hello" -> "click").
+        let words = input;
+        if (zoomedAim && this.aimChecked) {
+          const points = this.messages
+            .filter((m) => m.role === 'assistant' && Array.isArray(m.content))
+            .flatMap((m) => m.content)
+            .filter((b) => b.type === 'tool_use' && b.name === 'point');
+          const original = points.length >= 2 ? points[points.length - 2] : null;
+          if (original && original.input) words = original.input;
+        }
         this.aimChecked = false;
         this.steps++;
         this.emit('point', {
           step: this.steps,
-          say: input.say,
-          bubble: input.bubble || 'Here',
-          action: input.action,
-          typeText: input.type_text || '',
-          target: input.target || '',
+          say: words.say,
+          bubble: words.bubble || 'Here',
+          action: words.action,
+          typeText: words.type_text || '',
+          target: words.target || '',
           image,
           screen: shot.toScreen(image),
         });
