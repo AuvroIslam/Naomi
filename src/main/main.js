@@ -156,6 +156,8 @@ function toOverlay(pt) {
 
 function sendState(state) {
   lastState = state;
+  // The practice window also stays on top; keep Naomi's island above it whenever she speaks.
+  if (practiceWin && !practiceWin.isDestroyed()) restack();
   if (island && !island.isDestroyed()) island.webContents.send('naomi:state', state);
 }
 
