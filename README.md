@@ -79,7 +79,7 @@ npm install
 npm start
 ```
 
-On first use Naomi asks for a key (a family member can paste it once — keys are encrypted with Windows' own credential protection). Developers can instead copy `.env.example` to `.env`.
+People using Naomi are **never asked for an API key**. Whoever builds Naomi copies `.env.example` to `.env` and fills in the keys once; `npm run dist` bundles that `.env` into the installer. (Anyone with the installer can extract those keys, so use keys with spending limits — or just the free Google key.)
 
 ### Choose your AI
 

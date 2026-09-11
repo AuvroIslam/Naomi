@@ -438,12 +438,6 @@ function wireIpc() {
     overlaySend({ type: 'prefs', spotlight: prefs.spotlight });
     return prefsForRenderer();
   });
-  ipcMain.handle('naomi:key:set', (_e, payload) => {
-    const { provider, key } = payload && typeof payload === 'object' ? payload : { provider: 'anthropic', key: payload };
-    settings.setApiKey(String(key || ''), String(provider || 'anthropic'));
-    providerHealth.clear(); // a new key deserves a fresh try
-    return prefsForRenderer();
-  });
   ipcMain.handle('naomi:memory:clear', () => {
     memory.clear();
     return prefsForRenderer();

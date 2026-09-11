@@ -164,7 +164,8 @@ function createOpenAICompatClient({ provider, model, apiKey, OpenAIClass = OpenA
             tools: toOpenAITools(params.tools, !!provider.openai),
             tool_choice: 'auto',
             ...(provider.openai ? { parallel_tool_calls: false, max_completion_tokens: 8000 } : { max_tokens: 8000 }),
-            ...(provider.extra || {}),
+            // Gemma rejects Gemini's thinking settings, so extras only go to non-Gemma models.
+            ...(provider.extra && !/^gemma/i.test(model) ? provider.extra : {}),
           };
           return fromOpenAIResponse(await client.chat.completions.create(body));
         },

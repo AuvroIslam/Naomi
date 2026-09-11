@@ -14,7 +14,6 @@ let lastUserText = '';
 let interactive = false;
 let flashTimer = null;
 let collapseTimer = null;
-let setupProvider = 'google';
 
 const TASKS = [
   { emoji: '✉️', label: 'Send an email', goal: 'I want to send an email' },
@@ -25,13 +24,8 @@ const TASKS = [
   { emoji: '📎', label: 'Attach a file', goal: 'How do I attach a file to an email?' },
 ];
 
-// Listed in the order Naomi tries them.
-const PROVIDERS = [
-  { id: 'openai', label: 'OpenAI', hint: 'Get a key at platform.openai.com/api-keys' },
-  { id: 'deepseek', label: 'DeepSeek', hint: 'Get a key at platform.deepseek.com' },
-  { id: 'google', label: 'Google Gemini', tag: 'Free', hint: 'Free key at aistudio.google.com/apikey' },
-  { id: 'anthropic', label: 'Claude', hint: 'Get a key at console.anthropic.com' },
-];
+// In the order Naomi tries them (keys come from the app's own setup, never from the person).
+const AI_LABELS = { openai: 'OpenAI', deepseek: 'DeepSeek', google: 'Google Gemini', anthropic: 'Claude' };
 
 const WIDTH = { idle: 250, compact: 480, expanded: 560 };
 const SIZE = { home: 'expanded', thinking: 'compact', ask: 'expanded', point: 'compact', keys: 'compact', finish: 'expanded', error: 'expanded', setup: 'expanded' };
@@ -133,9 +127,10 @@ function stopButton() {
   return iconBtn('✕', 'Stop', goHome);
 }
 
-function keyStatus(id) {
-  const k = prefs.keys && prefs.keys[id];
-  return k === 'env' ? 'from .env' : k === 'saved' ? 'saved ✓' : 'not set';
+function connectedAIs() {
+  return Object.keys(AI_LABELS)
+    .filter((id) => prefs.keys && prefs.keys[id])
+    .map((id) => AI_LABELS[id]);
 }
 
 // ---------- screens ----------
@@ -237,36 +232,8 @@ const renderers = {
     ];
   },
 
-  // No key yet (or every key failed): pick a provider and paste its key.
+  // Naomi's AI isn't reachable (not configured, or every provider failed). Never ask for keys.
   setup(s) {
-    const chosen = PROVIDERS.find((p) => p.id === setupProvider) || PROVIDERS[2];
-    const key = h('input', { type: 'password', placeholder: `Paste your ${chosen.label} key`, autocomplete: 'off' });
-    const save = async () => {
-      if (!key.value.trim()) return key.focus();
-      applyPrefs(await window.naomi.setApiKey(key.value, chosen.id));
-      if (s.goal) begin(s.goal);
-      else goHome();
-      return undefined;
-    };
-    key.addEventListener('keydown', (e) => e.key === 'Enter' && save());
-    const picker = h(
-      'div',
-      { class: 'provider-picker' },
-      PROVIDERS.map((p) =>
-        h(
-          'button',
-          {
-            class: `provider${p.id === chosen.id ? ' on' : ''}`,
-            onclick: () => {
-              setupProvider = p.id;
-              render(state);
-            },
-          },
-          p.label,
-          p.tag ? h('span', { class: 'free' }, p.tag) : null,
-        ),
-      ),
-    );
     return [
       h(
         'div',
@@ -275,19 +242,16 @@ const renderers = {
         h(
           'div',
           { class: 'grow' },
-          h('div', { class: 'say' }, 'Naomi needs an AI key to see your screen.'),
-          h('div', { class: 'muted', style: 'margin:4px 0 0' }, s.say || 'Any one of these works. Google Gemini is free.'),
+          h('div', { class: 'say' }, 'I can’t reach my helper right now.'),
+          h('div', { class: 'muted', style: 'margin:4px 0 0' }, 'Please check the internet connection, or ask whoever set up Naomi. You can still practise safely.'),
         ),
         stopButton(),
       ),
-      picker,
-      h('div', { class: 'input-row settings' }, key, btn('Switch on', save, 'coral')),
-      h('p', { class: 'muted' }, chosen.hint),
       h(
-        'p',
-        { class: 'muted' },
-        'No key at all? ',
-        h('a', { href: '#', style: 'color:#ff9f8a', onclick: (e) => { e.preventDefault(); window.naomi.practice(); } }, 'Try a safe practice run.'),
+        'div',
+        { class: 'actions' },
+        btn('Try again', () => (s.goal ? begin(s.goal) : goHome()), 'coral'),
+        btn('🎓 Practise safely', () => window.naomi.practice()),
       ),
     ];
   },
@@ -300,19 +264,7 @@ function renderSettings() {
     box.addEventListener('change', () => onchange(box.checked));
     return h('label', { class: 'row-opt' }, h('span', {}, label), box);
   };
-  const keyRow = (p) => {
-    const input = h('input', { type: 'password', placeholder: keyStatus(p.id) === 'not set' ? 'paste key' : 'paste to replace', autocomplete: 'off' });
-    return h(
-      'div',
-      { class: 'row-opt key-opt' },
-      h('span', { class: 'key-name' }, p.label, p.tag ? h('span', { class: 'free' }, p.tag) : null, h('small', {}, keyStatus(p.id))),
-      input,
-      btn('Save', async () => {
-        applyPrefs(await window.naomi.setApiKey(input.value, p.id));
-        render(state);
-      }, 'small coral'),
-    );
-  };
+  const ais = connectedAIs();
   return [
     row(face(), h('div', { class: 'title grow' }, 'Settings'), iconBtn('✕', 'Close settings', closeSettings)),
     h(
@@ -330,8 +282,7 @@ function renderSettings() {
           render(state);
         }, 'small'),
       ),
-      h('p', { class: 'muted' }, 'AI keys — Naomi tries them in this order and uses the first that works:'),
-      PROVIDERS.map(keyRow),
+      h('div', { class: 'row-opt' }, h('span', {}, 'AI helper'), h('span', { class: 'muted', style: 'margin:0' }, ais.length ? ais.join(' → ') : 'not set up')),
     ),
     h('p', { class: 'muted' }, 'Press Ctrl + Alt + N any time to bring Naomi back.'),
   ];
@@ -452,7 +403,7 @@ window.naomi.onFeedback((fb) => {
     showFlash(fb.then === 'type' ? '👍 Good! Now type.' : '👍 Good!');
     speak(fb.then === 'type' ? 'Good. Now type.' : 'Good.');
   } else if (fb.type === 'provider') {
-    showFlash(`One moment — switching to ${fb.to}…`, true, 2500);
+    showFlash('One moment…', true, 2000);
   } else if (fb.type === 'nudge') {
     island.classList.remove('shake');
     void island.offsetWidth;

@@ -135,6 +135,7 @@ test('each provider gets the right endpoint, model, and parameters', async () =>
   assert.equal(gm.body.model, 'gemini-3.6-flash');
   assert.equal(gm.body.reasoning_effort, 'low');
   assert.equal(gemma.body.model, 'gemma-4-31b-it');
+  assert.equal(gemma.body.reasoning_effort, undefined, 'Gemma rejects thinking settings');
 });
 
 test('model names can be overridden from the environment', () => {

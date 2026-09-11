@@ -23,7 +23,8 @@
     "files": [
       "src/**/*",
       "assets/**/*",
-      "package.json"
+      "package.json",
+      ".env"
     ],
     "asarUnpack": [
       "node_modules/uiohook-napi/**/*"
