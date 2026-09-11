@@ -7,6 +7,9 @@ const FAST = {
   pollMs: 5,
   changePollMs: 10,
   baselineDelayMs: 10,
+  volatilitySamples: 3,
+  volatilitySampleMs: 5,
+  confirmMs: 10,
   minSettleMs: 5,
   doubleClickSettleMs: 15,
   maxSettleMs: 60,
@@ -102,10 +105,10 @@ test('type step: clicking away after typing finishes the step', async () => {
   assert.equal(obs.via, 'click');
 });
 
-test('a big screen change (e.g. keyboard shortcut) finishes a click step', async () => {
+test('a lasting screen change (e.g. keyboard shortcut) finishes a click step', async () => {
   const { screen, w } = setup();
   w.watch({ action: 'click', screen: { x: 200, y: 200 } });
-  await wait(20);
+  await wait(80); // after the baseline has been learned
   const done = once(w, 'done');
   screen.current = sig(10);
   assert.equal((await done).kind, 'changed');

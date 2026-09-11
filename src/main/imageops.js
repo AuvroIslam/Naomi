@@ -1,4 +1,5 @@
-// Pure pixel operations on raw BGRA bitmaps (what Electron's NativeImage.toBitmap returns).
+// Pure pixel operations on raw BGRA bitmaps (what Electron's NativeImage.toBitmap returns),
+// plus small "signatures" of the screen used to notice when something really changed.
 
 // Paint rectangles (image-space) a flat color so Claude never sees Naomi's own window.
 function maskBitmap(buf, width, height, rects, color = { r: 120, g: 120, b: 128 }) {
@@ -40,14 +41,48 @@ function frameSignature(buf, width, height, cols = 48, rows = 27) {
   return { cols, rows, cells: sig };
 }
 
-// Fraction (0..1) of grid cells whose brightness moved more than `threshold`.
-function signatureDiff(a, b, threshold = 6) {
-  if (!a || !b || a.cells.length !== b.cells.length) return 1;
+const same = (a, b) => a && b && a.cells.length === b.cells.length;
+
+// Fraction (0..1) of grid cells whose brightness moved more than `threshold`,
+// skipping cells flagged in `ignore` (e.g. a playing video).
+function signatureDiff(a, b, threshold = 6, ignore = null) {
+  if (!same(a, b)) return 1;
   let changed = 0;
+  let counted = 0;
   for (let i = 0; i < a.cells.length; i++) {
+    if (ignore && ignore[i]) continue;
+    counted++;
     if (Math.abs(a.cells[i] - b.cells[i]) > threshold) changed++;
   }
-  return changed / a.cells.length;
+  return counted ? changed / counted : 0;
 }
 
-module.exports = { maskBitmap, frameSignature, signatureDiff };
+// Cells that flicker between consecutive samples — video, animations, blinking ads.
+function volatileCells(samples, threshold = 6) {
+  const mask = new Uint8Array(samples[0].cells.length);
+  for (let s = 1; s < samples.length; s++) markVolatile(mask, samples[s - 1], samples[s], threshold);
+  return mask;
+}
+
+function markVolatile(mask, a, b, threshold = 6) {
+  if (!same(a, b)) return mask;
+  for (let i = 0; i < mask.length; i++) if (Math.abs(a.cells[i] - b.cells[i]) > threshold) mask[i] = 1;
+  return mask;
+}
+
+// A real change stays put: different from the baseline in two samples, and steady between them.
+function persistentChange(base, a, b, threshold = 6, ignore = null) {
+  if (!same(base, a) || !same(a, b)) return 0;
+  let changed = 0;
+  let counted = 0;
+  for (let i = 0; i < base.cells.length; i++) {
+    if (ignore && ignore[i]) continue;
+    counted++;
+    const fromBaseA = Math.abs(a.cells[i] - base.cells[i]);
+    const fromBaseB = Math.abs(b.cells[i] - base.cells[i]);
+    if (fromBaseA > threshold && fromBaseB > threshold && Math.abs(a.cells[i] - b.cells[i]) <= threshold) changed++;
+  }
+  return counted ? changed / counted : 0;
+}
+
+module.exports = { maskBitmap, frameSignature, signatureDiff, volatileCells, markVolatile, persistentChange };

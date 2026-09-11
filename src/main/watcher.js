@@ -4,12 +4,15 @@
 
 const { EventEmitter } = require('node:events');
 const { distance } = require('./geometry');
-const { signatureDiff } = require('./imageops');
+const { signatureDiff, volatileCells, markVolatile, persistentChange } = require('./imageops');
 
 const DEFAULTS = {
   pollMs: 250,
   changePollMs: 500,
   baselineDelayMs: 900,
+  volatilitySamples: 3,
+  volatilitySampleMs: 250,
+  confirmMs: 350,
   minSettleMs: 350,
   doubleClickSettleMs: 750,
   maxSettleMs: 3000,
@@ -45,6 +48,7 @@ class ActionWatcher extends EventEmitter {
     this.opt = { ...DEFAULTS, ...options };
     this.token = 0;
     this.step = null;
+    this.volatile = null;
     this.timers = new Set();
 
     this._onMouse = this._onMouse.bind(this);
@@ -63,6 +67,7 @@ class ActionWatcher extends EventEmitter {
     this.settling = false;
     this.keys = 0;
     this.baseline = null;
+    this.volatile = null;
     this._armIdleNudge();
 
     const detectChanges = ['click', 'double_click', 'right_click', 'keys'].includes(step.action);
@@ -172,29 +177,45 @@ class ActionWatcher extends EventEmitter {
     this.scrollTimer = this._timer(() => this._settle({ kind: 'scrolled' }, 0), this.opt.scrollIdleMs);
   }
 
-  // Poll the screen; a big enough change means the person did *something* (maybe via keyboard).
+  // Poll the screen; a lasting change means the person did *something* (maybe via keyboard).
+  // Regions that flicker on their own — a video call, an animated ad — are learned and ignored.
   async _changeLoop(token) {
-    await sleep(this.opt.baselineDelayMs);
-    if (token !== this.token) return;
+    const o = this.opt;
+    await sleep(o.baselineDelayMs);
+    const samples = [];
     try {
-      this.baseline = await this.getSignature();
+      for (let i = 0; i < o.volatilitySamples; i++) {
+        if (i) await sleep(o.volatilitySampleMs);
+        if (token !== this.token) return;
+        samples.push(await this.getSignature());
+      }
     } catch {
       return;
     }
+    if (token !== this.token) return;
+    this.volatile = volatileCells(samples);
+    this.baseline = samples[samples.length - 1];
+
     while (token === this.token) {
-      await sleep(this.opt.changePollMs);
+      await sleep(o.changePollMs);
       if (token !== this.token || this.settling) return;
-      let sig;
+      let first;
+      let second;
       try {
-        sig = await this.getSignature();
+        first = await this.getSignature();
+        if (signatureDiff(this.baseline, first, 6, this.volatile) <= o.changeThreshold) continue;
+        await sleep(o.confirmMs);
+        if (token !== this.token || this.settling) return;
+        second = await this.getSignature();
       } catch {
         continue;
       }
       if (token !== this.token || this.settling) return;
-      if (signatureDiff(this.baseline, sig) > this.opt.changeThreshold) {
+      if (persistentChange(this.baseline, first, second, 6, this.volatile) > o.changeThreshold) {
         this._settle({ kind: 'changed' }, 0);
         return;
       }
+      markVolatile(this.volatile, first, second); // it moved on its own: learn to ignore it
     }
   }
 
@@ -212,7 +233,7 @@ class ActionWatcher extends EventEmitter {
         await sleep(this.opt.pollMs);
         if (token !== this.token) return;
         const cur = await this.getSignature();
-        if (signatureDiff(prev, cur) < this.opt.stableThreshold) break;
+        if (signatureDiff(prev, cur, 6, this.volatile) < this.opt.stableThreshold) break;
         prev = cur;
       }
     } catch {
