@@ -1,0 +1,9 @@
+node_modules/
+dist/
+out/
+.env
+*.log
+CLAUDE.md
+.claude/
+rules.md
+test-output/

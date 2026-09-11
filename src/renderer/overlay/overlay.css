@@ -1,0 +1,245 @@
+:root {
+  --coral: #ff6a4d;
+  --coral-deep: #e2482b;
+  --ink: #1d2140;
+  --green: #22b573;
+  --glide: 850ms cubic-bezier(0.22, 0.9, 0.3, 1);
+}
+
+html,
+body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  user-select: none;
+}
+
+/* Soft spotlight: dims everything except a circle around the target. */
+#spot {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 170px;
+  height: 170px;
+  margin: -85px 0 0 -85px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 300vmax rgba(18, 20, 45, 0.2);
+  opacity: 0;
+  transition: opacity 450ms ease, transform var(--glide);
+  pointer-events: none;
+}
+#spot.on {
+  opacity: 1;
+}
+
+#pointer {
+  position: fixed;
+  left: 0;
+  top: 0;
+  transition: transform var(--glide), opacity 300ms ease;
+  will-change: transform;
+}
+#pointer.hidden,
+#bubble.hidden {
+  opacity: 0;
+}
+.no-anim,
+.no-anim * {
+  transition: none !important;
+}
+
+.dot {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  left: -19px;
+  top: -19px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #ff9a7f, var(--coral) 55%, var(--coral-deep));
+  border: 4px solid #fff;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.4), 0 0 0 2px rgba(226, 72, 43, 0.6);
+  display: grid;
+  place-items: center;
+  transition: background 250ms ease, transform 250ms ease;
+}
+.check {
+  color: #fff;
+  font-size: 18px;
+  font-weight: 900;
+  opacity: 0;
+  transform: scale(0.4);
+  transition: all 250ms ease;
+}
+
+.ring {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  left: -19px;
+  top: -19px;
+  border-radius: 50%;
+  border: 4px solid var(--coral);
+  animation: pulse 1.8s ease-out infinite;
+}
+.ring.r2 {
+  animation-delay: 0.9s;
+}
+@keyframes pulse {
+  from {
+    transform: scale(1);
+    opacity: 0.95;
+  }
+  to {
+    transform: scale(3.6);
+    opacity: 0;
+  }
+}
+
+/* Thinking: the dot rests and breathes while Naomi looks at the screen. */
+#pointer.thinking .ring {
+  animation: none;
+  opacity: 0;
+}
+#pointer.thinking .dot {
+  animation: breathe 1.4s ease-in-out infinite;
+  background: radial-gradient(circle at 35% 35%, #ffc2b3, #ff957c);
+}
+@keyframes breathe {
+  0%,
+  100% {
+    transform: scale(0.7);
+  }
+  50% {
+    transform: scale(0.95);
+  }
+}
+
+/* Success */
+#pointer.hit .dot {
+  background: radial-gradient(circle at 35% 35%, #6fe0ac, var(--green));
+  transform: scale(1.35);
+}
+#pointer.hit .check {
+  opacity: 1;
+  transform: scale(1);
+}
+#pointer.hit .ring {
+  border-color: var(--green);
+  animation: burst 700ms ease-out 1 forwards;
+}
+@keyframes burst {
+  from {
+    transform: scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: scale(4.5);
+    opacity: 0;
+  }
+}
+
+/* Gentle "it's here!" nudge */
+#pointer.nudge .ring {
+  animation: pulse-big 1s ease-out 3;
+}
+@keyframes pulse-big {
+  from {
+    transform: scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: scale(6);
+    opacity: 0;
+  }
+}
+#bubble.nudge {
+  animation: wiggle 600ms ease-in-out 2;
+}
+@keyframes wiggle {
+  0%,
+  100% {
+    rotate: 0deg;
+  }
+  25% {
+    rotate: -3deg;
+  }
+  75% {
+    rotate: 3deg;
+  }
+}
+
+#bubble {
+  position: fixed;
+  left: 0;
+  top: 0;
+  max-width: 380px;
+  padding: 14px 20px 15px;
+  border-radius: 18px;
+  background: var(--ink);
+  color: #fff;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  transition: transform var(--glide), opacity 300ms ease, background 250ms ease;
+  will-change: transform;
+}
+#bubble .label {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+#bubble .type {
+  margin-top: 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: #fff;
+  color: var(--ink);
+  font: 600 22px/1.2 Consolas, 'Cascadia Mono', monospace;
+  word-break: break-all;
+}
+#bubble .type:empty {
+  display: none;
+}
+#bubble.hit {
+  background: var(--green);
+}
+.scroll-hint {
+  display: inline-block;
+  margin-left: 8px;
+  animation: bob 1s ease-in-out infinite;
+}
+@keyframes bob {
+  50% {
+    transform: translateY(6px);
+  }
+}
+.scroll-up .scroll-hint {
+  animation-name: bob-up;
+}
+@keyframes bob-up {
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+#confetti {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+.confetto {
+  position: absolute;
+  top: -20px;
+  width: 12px;
+  height: 18px;
+  border-radius: 3px;
+  animation: fall linear forwards;
+}
+@keyframes fall {
+  to {
+    transform: translateY(110vh) rotate(720deg);
+  }
+}

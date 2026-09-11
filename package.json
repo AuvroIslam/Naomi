@@ -1,0 +1,21 @@
+{
+  "name": "naomi",
+  "version": "0.1.0",
+  "description": "Naomi — a patient, visual computer companion. Tell her what you want to do; she points the way.",
+  "main": "src/main/main.js",
+  "author": "Auvro Islam",
+  "license": "MIT",
+  "scripts": {
+    "start": "node scripts/start.js",
+    "mock": "node scripts/start.js --mock",
+    "test": "node --test \"test/*.test.js\""
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.125.0",
+    "dotenv": "^17.4.2",
+    "uiohook-napi": "^1.5.5"
+  },
+  "devDependencies": {
+    "electron": "^44.3.0"
+  }
+}
