@@ -301,7 +301,29 @@ class GuideSession extends EventEmitter {
         this.steps++;
         this.emit('keys', { step: this.steps, say: input.say, keys: input.keys || [] });
         break;
-      case 'finish':
+      case 'finish': {
+        // A "success" before the person has done anything is a misread screen, not a finished task.
+        const firstTurn = this.messages.filter((m) => m.role === 'assistant').length <= 1;
+        if (input.success && firstTurn && !this.finishPushedBack) {
+          this.finishPushedBack = true;
+          await this._send(
+            [
+              {
+                type: 'tool_result',
+                tool_use_id: tool.id,
+                is_error: true,
+                content: [
+                  {
+                    type: 'text',
+                    text: "The person hasn't done anything yet, so the goal can't be finished. Look at the screen again and guide them through the first step, or ask them a question.",
+                  },
+                ],
+              },
+            ],
+            shot,
+          );
+          return;
+        }
         this.emit('finish', {
           say: input.say,
           success: !!input.success,
@@ -310,6 +332,7 @@ class GuideSession extends EventEmitter {
             : [],
         });
         break;
+      }
       default:
         this.emit('error', { kind: 'unknown', message: "I got a bit mixed up. Let's try that again." });
     }

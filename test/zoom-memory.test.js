@@ -101,10 +101,16 @@ test('zooming is capped so Claude cannot loop', async () => {
 });
 
 test('memories are shared with Claude, and finish returns facts to remember', async () => {
-  const client = scripted([tool('f1', 'finish', { say: 'Done!', success: true, remember: ['Son Rafi uses WhatsApp', '  ', 5] })]);
+  const client = scripted([
+    tool('a1', 'ask_user', { question: 'Is it your son Rafi?', choices: ['Yes', 'No'] }),
+    tool('f1', 'finish', { say: 'Done!', success: true, remember: ['Son Rafi uses WhatsApp', '  ', 5] }),
+  ]);
   const s = new GuideSession({ client, capture: async () => shot(), memories: ["Alysa's email: alysa2002@gmail.com"] });
-  const finished = once(s, 'finish');
+  const asked = once(s, 'ask');
   await s.start('call my son');
+  await asked;
+  const finished = once(s, 'finish');
+  await s.reply('Yes');
   const f = await finished;
   assert.deepEqual(f.remember, ['Son Rafi uses WhatsApp']);
   assert.match(client.calls[0][0].content[1].text, /alysa2002@gmail\.com/);
