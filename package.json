@@ -10,7 +10,33 @@
     "mock": "node scripts/start.js --mock",
     "check": "node scripts/check-api.js",
     "icon": "node -e \"delete process.env.ELECTRON_RUN_AS_NODE; require('child_process').spawnSync(require('electron'), ['scripts/make-icon.js'], {stdio: 'inherit'})\"",
-    "test": "node --test \"test/*.test.js\""
+    "test": "node --test \"test/*.test.js\"",
+    "dist": "electron-builder --win portable nsis"
+  },
+  "build": {
+    "appId": "com.naomi.companion",
+    "productName": "Naomi",
+    "npmRebuild": false,
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "node_modules/uiohook-napi/**/*"
+    ],
+    "win": {
+      "icon": "assets/icon.png",
+      "artifactName": "Naomi-${version}-${arch}-${target}.${ext}"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "shortcutName": "Naomi"
+    }
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",
@@ -18,6 +44,7 @@
     "uiohook-napi": "^1.5.5"
   },
   "devDependencies": {
-    "electron": "^44.3.0"
+    "electron": "^44.3.0",
+    "electron-builder": "^26.15.3"
   }
 }

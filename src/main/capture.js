@@ -92,4 +92,11 @@ async function captureSignature({ maskRects = [] } = {}) {
   return frameSignature(bitmap, width, height);
 }
 
-module.exports = { captureForClaude, captureRegion, captureSignature, primaryDisplay };
+// Where a screen point lands in the screenshot Claude sees (same sizing as captureForClaude).
+function screenToShot(pt) {
+  const display = primaryDisplay();
+  const image = fitSize(display.bounds.width, display.bounds.height, MAX_W, MAX_H);
+  return screenToImage(pt, image, display);
+}
+
+module.exports = { captureForClaude, captureRegion, captureSignature, screenToShot, primaryDisplay };

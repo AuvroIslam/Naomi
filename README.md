@@ -46,6 +46,7 @@ It never controls your computer. **You** do every click. Naomi just shows you wh
 | 🗣️ **Speaks and listens** | Reads every instruction aloud; the 🎤 button opens Windows voice typing. Answers in your language, including Bangla. |
 | 🤝 **Designed for patience** | Big text, big buttons, "Show me again", "I'm stuck", no jargon, no judgement. Never says "wrong". |
 | 🫥 **Stays out of the way** | If Naomi needs to point at something under her own window, she scoots to the other side of the screen. |
+| 🎓 **Safe practice mode** | A pretend email app where first-timers can practise with Naomi — nothing is really sent, and no setup or API key is needed. |
 
 ## How it works
 
@@ -86,9 +87,11 @@ ANTHROPIC_API_KEY=sk-ant-...
 | Command | What it does |
 |---|---|
 | `npm start` | Run Naomi |
-| `npm run mock` | Run with a scripted offline brain — try the whole experience without an API key |
+| `npm start -- --practice` | Jump straight into practice mode (no API key needed) |
+| `npm run mock` | Run with a scripted offline brain that points at fixed spots — for UI development |
 | `npm run check` | One live call to Claude to confirm your key and setup work |
-| `npm test` | Unit tests (geometry, pixel ops, the guide session, the action watcher, memory) |
+| `npm test` | Unit tests (geometry, pixel ops, guide session, action watcher, memory, practice guide) |
+| `npm run dist` | Build a Windows installer and a portable `.exe` into `dist/` |
 
 Press **Ctrl + Alt + N** any time to bring Naomi back.
 

@@ -101,6 +101,14 @@ function againButton(text) {
   return h('button', { class: 'btn light', onclick }, '🔁 Show me again');
 }
 
+function practiceButton(label) {
+  const onclick = () => {
+    lastUserText = '';
+    window.naomi.practice();
+  };
+  return h('button', { class: 'practice-btn', onclick }, label);
+}
+
 function stepChip(step) {
   return h('div', { class: 'step-chip' }, h('span', { class: 'pip' }), `Step ${step}`);
 }
@@ -117,7 +125,8 @@ const renderers = {
           h('button', { class: 'task', onclick: () => begin(t.goal) }, h('span', { class: 'emoji' }, t.emoji), t.label),
         ),
       ),
-      h('p', { class: 'muted', style: 'margin-top:16px' }, 'Or tell me in your own words below. There are no wrong questions.'),
+      practiceButton('🎓 New here? Try a safe practice first'),
+      h('p', { class: 'muted', style: 'margin-top:12px' }, 'Or tell me in your own words below. There are no wrong questions.'),
     ];
   },
 
@@ -183,9 +192,15 @@ const renderers = {
   },
 
   finish(s) {
-    const remembered = s.remembered && s.remembered.length
-      ? h('div', { class: 'memo' }, h('div', { class: 'lbl' }, "📝 I'll remember for next time:"), h('ul', {}, s.remembered.map((m) => h('li', {}, m))))
-      : null;
+    const remembered =
+      s.remembered && s.remembered.length
+        ? h(
+            'div',
+            { class: 'memo' },
+            h('div', { class: 'lbl' }, "📝 I'll remember for next time:"),
+            h('ul', {}, s.remembered.map((m) => h('li', {}, m))),
+          )
+        : null;
     return [
       h(
         'div',
@@ -193,7 +208,7 @@ const renderers = {
         h('div', { class: 'big' }, s.success ? '🎉' : '🤗'),
         h('p', { class: 'say' }, s.say),
         remembered,
-        h('button', { class: 'btn coral', style: 'width:100%', onclick: goHome }, 'Do something else'),
+        h('button', { class: 'btn coral', style: 'width:100%', onclick: goHome }, s.practice ? 'Now try the real thing' : 'Do something else'),
       ),
     ];
   },
@@ -229,6 +244,7 @@ const renderers = {
           'Naomi uses Claude to see your screen. Ask a family member to paste a Claude API key here once — you won’t need to do it again.',
       ),
       h('div', { class: 'setup' }, key, h('button', { class: 'btn coral', onclick: save }, 'Switch Naomi on')),
+      practiceButton('🎓 No key yet? Try a safe practice — no setup needed'),
     ];
   },
 };
@@ -254,10 +270,10 @@ function render(s) {
   view.style.animation = '';
   view.scrollTop = 0;
 
-  statusEl.textContent = STATUS[s.phase] || STATUS.home;
   const inTask = !['home', 'setup', 'finish'].includes(s.phase);
-  $('#btnStop').hidden = !inTask;
+  statusEl.textContent = s.practice && inTask ? '🛟 Practice mode' : STATUS[s.phase] || STATUS.home;
   // keep the header roomy mid-task: Stop replaces settings and hide
+  $('#btnStop').hidden = !inTask;
   $('#btnSettings').hidden = inTask;
   $('#btnMin').hidden = inTask;
   avatar.classList.toggle('thinking', s.phase === 'thinking');

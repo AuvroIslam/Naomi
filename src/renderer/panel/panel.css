@@ -271,6 +271,34 @@ button {
   outline: none;
 }
 
+.practice-btn {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  border: 2px dashed var(--coral);
+  background: #fff;
+  color: var(--coral-deep);
+  font-weight: 700;
+  font-size: 0.85em;
+  text-align: left;
+}
+.practice-btn:hover {
+  background: var(--coral-soft);
+}
+.practice-badge {
+  display: inline-block;
+  margin-left: 8px;
+  background: #e2f6ec;
+  color: var(--green);
+  font-weight: 700;
+  font-size: 0.7em;
+  padding: 4px 10px;
+  border-radius: 999px;
+  vertical-align: middle;
+}
+
 .step-chip {
   display: inline-flex;
   align-items: center;
@@ -543,6 +571,7 @@ button {
 .drawer {
   position: absolute;
   inset: 0;
+  overflow-y: auto;
   background: var(--cream);
   padding: 18px 20px;
   display: flex;

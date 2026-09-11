@@ -4,6 +4,7 @@ const invoke = (channel, ...args) => ipcRenderer.invoke(channel, ...args);
 
 contextBridge.exposeInMainWorld('naomi', {
   start: (text) => invoke('naomi:start', text),
+  practice: () => invoke('naomi:practice'),
   reply: (text) => invoke('naomi:reply', text),
   confirm: () => invoke('naomi:confirm'),
   stuck: () => invoke('naomi:stuck'),
