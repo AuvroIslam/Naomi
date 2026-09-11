@@ -9,6 +9,7 @@
     "start": "node scripts/start.js",
     "mock": "node scripts/start.js --mock",
     "check": "node scripts/check-api.js",
+    "icon": "node -e \"delete process.env.ELECTRON_RUN_AS_NODE; require('child_process').spawnSync(require('electron'), ['scripts/make-icon.js'], {stdio: 'inherit'})\"",
     "test": "node --test \"test/*.test.js\""
   },
   "dependencies": {

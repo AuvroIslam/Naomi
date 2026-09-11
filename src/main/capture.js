@@ -1,12 +1,15 @@
 // Screen capture for Naomi. Everything here uses the primary display.
 
 const { desktopCapturer, screen, nativeImage } = require('electron');
-const { fitSize, rectToImage, imageToScreen, screenToImage } = require('./geometry');
+const { fitSize, clamp, rectToImage, imageToScreen, screenToImage } = require('./geometry');
 const { maskBitmap, frameSignature } = require('./imageops');
 
 // Big enough for Claude to read small buttons, small enough to stay fast.
 const MAX_W = 1280;
 const MAX_H = 800;
+// Zoomed crops are shown up to this size (and magnified up to 4x).
+const ZOOM_W = 1024;
+const ZOOM_H = 768;
 
 function primaryDisplay() {
   return screen.getPrimaryDisplay();
@@ -44,6 +47,40 @@ async function captureForClaude({ maskRects = [] } = {}) {
   };
 }
 
+/**
+ * A magnified view of part of the screen, captured at full physical resolution.
+ * @param {{x,y,width,height}} rect  area in screen DIP
+ */
+async function captureRegion(rect, { maskRects = [] } = {}) {
+  const display = primaryDisplay();
+  const full = {
+    width: Math.round(display.bounds.width * display.scaleFactor),
+    height: Math.round(display.bounds.height * display.scaleFactor),
+  };
+  const thumb = await grab(display, full);
+  const size = thumb.getSize();
+  const r = rectToImage(rect, size, display);
+  const crop = {
+    x: clamp(r.x, 0, size.width - 1),
+    y: clamp(r.y, 0, size.height - 1),
+  };
+  crop.width = clamp(r.width, 1, size.width - crop.x);
+  crop.height = clamp(r.height, 1, size.height - crop.y);
+
+  const piece = thumb.crop(crop);
+  const bitmap = piece.toBitmap();
+  const masks = maskRects
+    .map((m) => rectToImage(m, size, display))
+    .map((m) => ({ x: m.x - crop.x, y: m.y - crop.y, width: m.width, height: m.height }));
+  maskBitmap(bitmap, crop.width, crop.height, masks);
+
+  const scale = Math.min(ZOOM_W / crop.width, ZOOM_H / crop.height, 4);
+  const out = { width: Math.round(crop.width * scale), height: Math.round(crop.height * scale) };
+  const zoomed = nativeImage.createFromBitmap(bitmap, { width: crop.width, height: crop.height }).resize({ ...out, quality: 'best' });
+
+  return { base64: zoomed.toJPEG(88).toString('base64'), mediaType: 'image/jpeg', ...out };
+}
+
 // Tiny grayscale fingerprint of the screen, for "did anything change?" checks.
 async function captureSignature({ maskRects = [] } = {}) {
   const display = primaryDisplay();
@@ -55,4 +92,4 @@ async function captureSignature({ maskRects = [] } = {}) {
   return frameSignature(bitmap, width, height);
 }
 
-module.exports = { captureForClaude, captureSignature, primaryDisplay };
+module.exports = { captureForClaude, captureRegion, captureSignature, primaryDisplay };

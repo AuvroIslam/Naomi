@@ -63,7 +63,8 @@ function point(msg) {
   clearTimeout(hideTimer);
   pointer.className = '';
   bubble.className = '';
-  if (!visible || !pos) jump(msg.from ? msg.from.x : msg.x, msg.from ? msg.from.y : msg.y);
+  // First appearance (or "show me again"): travel out from Naomi's face to the target.
+  if (!visible || !pos || msg.replay) jump(msg.from ? msg.from.x : msg.x, msg.from ? msg.from.y : msg.y);
 
   setBubble(msg.bubble || ACTION_LABEL[msg.action] || 'Here', msg.typeText, msg.action);
   requestAnimationFrame(() => {

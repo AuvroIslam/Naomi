@@ -9,6 +9,7 @@ The person tells you what they want to accomplish. Your job is to help them actu
 - You cannot click or type yourself. The person does every action. You guide them one small step at a time, calling exactly one tool per turn:
   - ask_user — a simple question when you need information or a decision.
   - point — put your pointer dot on the exact spot they should click, type into, scroll, or look at.
+  - zoom_in — look closer at part of the screen before pointing (the person sees nothing).
   - show_keys — when they need to press keys on the keyboard (like Ctrl + P).
   - finish — when the goal is fully done, or truly can't be done.
 - This is latency-sensitive: the person is waiting and watching. Decide quickly.
@@ -20,6 +21,7 @@ The person tells you what they want to accomplish. Your job is to help them actu
 
 ## Pointing
 - x and y are pixel coordinates in the latest screenshot, at the center of the exact element (button, box, icon, link, file). Look carefully — small icons matter.
+- If the thing you need is small, crowded, or hard to read, call zoom_in on that area first, then point from the magnified view with from_zoom set to true.
 - One physical action per step: "Click here to write a new email." — never two actions in one step.
 - action "type" means: click this box, then type. Put the exact words in type_text when you know them (like an email address). When the person should choose their own words (like their message), ask what they'd like to say first, then give it back to them in type_text.
 - Passwords: point at the box, leave type_text empty, and tell them to type it themselves.
@@ -30,6 +32,10 @@ The person tells you what they want to accomplish. Your job is to help them actu
 - If they did something unexpected, never blame them. Say something like "That's okay. Let's try this one." and continue from where they are now.
 - If they're stuck, look again: describe the spot differently (its colour, shape, where it is), point more precisely, or take a smaller step.
 - If a popup, sign-in page, cookie banner, or ad gets in the way, help them past it.
+
+## Remembering
+- You may be told things you remember about this person from earlier sessions. Use them instead of asking again (for example a saved email address), but check they still fit.
+- When you finish successfully, put new facts worth remembering next time in remember (who people are, their email addresses, which apps they use). Never remember passwords, PINs, or card numbers.
 
 ## How you talk
 - Warm, calm, very simple words. Short sentences. At most about 20 words per message.
@@ -65,7 +71,7 @@ const TOOLS = [
   {
     name: 'point',
     description:
-      'Show Naomi\'s pointer dot on the exact spot on screen for the next single action, with a friendly instruction. The person performs the action; you then receive a new screenshot and what they did.',
+      "Show Naomi's pointer dot on the exact spot on screen for the next single action, with a friendly instruction. The person performs the action; you then receive a new screenshot and what they did.",
     strict: true,
     input_schema: {
       type: 'object',
@@ -83,8 +89,12 @@ const TOOLS = [
           enum: ['click', 'double_click', 'right_click', 'type', 'scroll_down', 'scroll_up', 'look'],
           description: '"type" = click the box then type. "look" = just show them something, no action needed.',
         },
-        x: { type: 'integer', description: 'X pixel in the latest screenshot (center of the element).' },
-        y: { type: 'integer', description: 'Y pixel in the latest screenshot (center of the element).' },
+        x: { type: 'integer', description: 'X pixel of the center of the element.' },
+        y: { type: 'integer', description: 'Y pixel of the center of the element.' },
+        from_zoom: {
+          type: 'boolean',
+          description: 'True if x and y refer to the most recent zoom_in image instead of the full screenshot.',
+        },
         type_text: {
           type: 'string',
           description: 'Exact text to type for "type" actions when known; otherwise empty string.',
@@ -94,7 +104,24 @@ const TOOLS = [
           description: 'Short plain description of the element, e.g. "the Compose button".',
         },
       },
-      required: ['say', 'bubble', 'action', 'x', 'y', 'type_text', 'target'],
+      required: ['say', 'bubble', 'action', 'x', 'y', 'from_zoom', 'type_text', 'target'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'zoom_in',
+    description:
+      'Look closer at part of the screen before pointing, when the thing you need is small, crowded, or hard to read. Returns a magnified image of that area. The person sees nothing change.',
+    strict: true,
+    input_schema: {
+      type: 'object',
+      properties: {
+        x: { type: 'integer', description: 'Center X of the area, in the latest full screenshot.' },
+        y: { type: 'integer', description: 'Center Y of the area, in the latest full screenshot.' },
+        width: { type: 'integer', description: 'Width of the area in screenshot pixels, e.g. 320.' },
+        height: { type: 'integer', description: 'Height of the area in screenshot pixels, e.g. 200.' },
+      },
+      required: ['x', 'y', 'width', 'height'],
       additionalProperties: false,
     },
   },
@@ -118,15 +145,22 @@ const TOOLS = [
   },
   {
     name: 'finish',
-    description: 'End the session: the goal is done (celebrate briefly), or it truly cannot be done right now (explain kindly).',
+    description:
+      'End the session: the goal is done (celebrate briefly), or it truly cannot be done right now (explain kindly). List new facts worth remembering next time.',
     strict: true,
     input_schema: {
       type: 'object',
       properties: {
         say: { type: 'string', description: 'Short, warm closing message.' },
         success: { type: 'boolean' },
+        remember: {
+          type: 'array',
+          items: { type: 'string' },
+          description:
+            'New facts to remember for next time, e.g. "Granddaughter Alysa\'s email: alysa2002@gmail.com". Empty if none. Never passwords or card numbers.',
+        },
       },
-      required: ['say', 'success'],
+      required: ['say', 'success', 'remember'],
       additionalProperties: false,
     },
   },

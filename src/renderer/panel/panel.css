@@ -157,8 +157,9 @@ button {
 }
 .top-actions {
   display: flex;
-  gap: 6px;
+  gap: 4px;
   align-items: center;
+  flex: none;
 }
 .icon-btn {
   width: 38px;
@@ -590,4 +591,30 @@ button {
 .hint {
   color: var(--ink-soft);
   font-size: 14px;
+  margin: 0;
+}
+.memory-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+/* "I'll remember" note on the finish screen */
+.memo {
+  text-align: left;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 10px 14px;
+  margin: 0 0 16px;
+  font-size: 0.8em;
+}
+.memo .lbl {
+  font-weight: 700;
+  color: var(--ink-soft);
+  margin-bottom: 4px;
+}
+.memo li {
+  margin: 2px 0 2px 18px;
 }

@@ -7,7 +7,7 @@ const avatar = $('#avatar');
 const statusEl = $('#status');
 const toast = $('#toast');
 
-let prefs = { voice: true, textSize: 'large', spotlight: true, hasApiKey: false };
+let prefs = { voice: true, textSize: 'large', spotlight: true, hasApiKey: false, memoryCount: 0 };
 let state = { phase: 'home' };
 let lastUserText = '';
 let toastTimer = null;
@@ -22,9 +22,10 @@ const TASKS = [
 ];
 
 const THINKING_LINES = {
-  first: "Let me look at your screen…",
+  first: 'Let me look at your screen…',
   afterStep: 'Let me see what happened…',
   answer: 'Thank you. One moment…',
+  closer: 'Looking a little closer…',
 };
 
 // ---------- tiny DOM helper ----------
@@ -43,9 +44,11 @@ function h(tag, props = {}, ...children) {
 }
 
 // ---------- voice ----------
+const BANGLA = /[ঀ-৿]/;
+
 function pickVoice(text) {
   const voices = speechSynthesis.getVoices();
-  if (/[ঀ-৿]/.test(text)) return voices.find((v) => v.lang.toLowerCase().startsWith('bn')) || null;
+  if (BANGLA.test(text)) return voices.find((v) => v.lang.toLowerCase().startsWith('bn')) || null;
   return (
     voices.find((v) => /aria|jenny|zira|female/i.test(v.name) && v.lang.startsWith('en')) ||
     voices.find((v) => v.lang.startsWith('en')) ||
@@ -57,14 +60,13 @@ function speak(text) {
   if (!prefs.voice || !text || !('speechSynthesis' in window)) return;
   speechSynthesis.cancel();
   const voice = pickVoice(text);
-  if (!voice && /[ঀ-৿]/.test(text)) return; // no Bangla voice installed; stay quiet
+  if (!voice && BANGLA.test(text)) return; // no Bangla voice installed; stay quiet
   const u = new SpeechSynthesisUtterance(text);
   if (voice) u.voice = voice;
   u.rate = 0.92;
   u.pitch = 1.05;
   speechSynthesis.speak(u);
 }
-if ('speechSynthesis' in window) speechSynthesis.onvoiceschanged = () => {};
 
 // ---------- feedback toast ----------
 function showToast(text, gentle = false, ms = 4000) {
@@ -92,7 +94,15 @@ function stuckButton() {
 }
 
 function againButton(text) {
-  return h('button', { class: 'btn light', onclick: () => speak(text) }, '🔊 Say again');
+  const onclick = () => {
+    speak(text);
+    window.naomi.replay();
+  };
+  return h('button', { class: 'btn light', onclick }, '🔁 Show me again');
+}
+
+function stepChip(step) {
+  return h('div', { class: 'step-chip' }, h('span', { class: 'pip' }), `Step ${step}`);
 }
 
 const renderers = {
@@ -112,15 +122,18 @@ const renderers = {
   },
 
   thinking(s) {
-    const line =
-      s.after === 'point' || s.after === 'keys'
-        ? THINKING_LINES.afterStep
-        : s.after === 'ask'
-          ? THINKING_LINES.answer
-          : THINKING_LINES.first;
+    let line = THINKING_LINES.first;
+    if (s.closer) line = THINKING_LINES.closer;
+    else if (s.after === 'point' || s.after === 'keys') line = THINKING_LINES.afterStep;
+    else if (s.after === 'ask') line = THINKING_LINES.answer;
     return [
       youLine(),
-      h('div', { class: 'thinking' }, h('span', { class: 'dots' }, h('i'), h('i'), h('i')), h('span', { class: 'say', style: 'margin:0' }, line)),
+      h(
+        'div',
+        { class: 'thinking' },
+        h('span', { class: 'dots' }, h('i'), h('i'), h('i')),
+        h('span', { class: 'say', style: 'margin:0' }, line),
+      ),
     ];
   },
 
@@ -135,14 +148,15 @@ const renderers = {
   },
 
   point(s) {
-    const primaryLabel = {
-      type: "✓ I've typed it",
-      look: '✓ Okay, next',
-      scroll_down: '✓ Done scrolling',
-      scroll_up: '✓ Done scrolling',
-    }[s.action] || '✓ I did it';
+    const primaryLabel =
+      {
+        type: "✓ I've typed it",
+        look: '✓ Okay, next',
+        scroll_down: '✓ Done scrolling',
+        scroll_up: '✓ Done scrolling',
+      }[s.action] || '✓ I did it';
     return [
-      h('div', { class: 'step-chip' }, h('span', { class: 'pip' }), `Step ${s.step}`),
+      stepChip(s.step),
       h('p', { class: 'say' }, s.say),
       s.typeText
         ? h('div', { class: 'type-card' }, h('div', { class: 'lbl' }, 'Type this:'), h('div', { class: 'txt' }, s.typeText))
@@ -160,21 +174,25 @@ const renderers = {
       keys.push(h('span', { class: 'key' }, k));
     });
     return [
-      h('div', { class: 'step-chip' }, h('span', { class: 'pip' }), `Step ${s.step}`),
+      stepChip(s.step),
       h('p', { class: 'say' }, s.say),
       h('div', { class: 'keys' }, keys),
       h('button', { class: 'btn primary', id: 'btnDone', onclick: onDone }, '✓ I did it'),
-      h('div', { class: 'row-actions' }, againButton(s.say), stuckButton()),
+      h('div', { class: 'row-actions' }, h('button', { class: 'btn light', onclick: () => speak(s.say) }, '🔊 Say again'), stuckButton()),
     ];
   },
 
   finish(s) {
+    const remembered = s.remembered && s.remembered.length
+      ? h('div', { class: 'memo' }, h('div', { class: 'lbl' }, "📝 I'll remember for next time:"), h('ul', {}, s.remembered.map((m) => h('li', {}, m))))
+      : null;
     return [
       h(
         'div',
         { class: 'celebrate' },
         h('div', { class: 'big' }, s.success ? '🎉' : '🤗'),
         h('p', { class: 'say' }, s.say),
+        remembered,
         h('button', { class: 'btn coral', style: 'width:100%', onclick: goHome }, 'Do something else'),
       ),
     ];
@@ -182,7 +200,7 @@ const renderers = {
 
   error(s) {
     return [
-      h('p', { class: 'say' }, s.say || 'Something went wrong. Let\'s try again.'),
+      h('p', { class: 'say' }, s.say || "Something went wrong. Let's try again."),
       h(
         'div',
         { class: 'actions' },
@@ -196,7 +214,7 @@ const renderers = {
     const key = h('input', { type: 'password', placeholder: 'Paste the key here (sk-ant-…)', autocomplete: 'off' });
     const save = async () => {
       if (!key.value.trim()) return key.focus();
-      prefs = await window.naomi.setApiKey(key.value);
+      applyPrefs(await window.naomi.setApiKey(key.value));
       if (s.goal) begin(s.goal);
       else goHome();
       return undefined;
@@ -207,7 +225,8 @@ const renderers = {
       h(
         'p',
         { class: 'muted' },
-        s.say || 'Naomi uses Claude to see your screen. Ask a family member to paste a Claude API key here once — you won’t need to do it again.',
+        s.say ||
+          'Naomi uses Claude to see your screen. Ask a family member to paste a Claude API key here once — you won’t need to do it again.',
       ),
       h('div', { class: 'setup' }, key, h('button', { class: 'btn coral', onclick: save }, 'Switch Naomi on')),
     ];
@@ -227,8 +246,8 @@ const STATUS = {
 
 function render(s) {
   state = s;
-  const render = renderers[s.phase] || renderers.home;
-  view.replaceChildren(...render(s).filter(Boolean));
+  const draw = renderers[s.phase] || renderers.home;
+  view.replaceChildren(...draw(s).filter(Boolean));
   // restart the fade-in so every new message gently appears
   view.style.animation = 'none';
   void view.offsetWidth;
@@ -238,13 +257,16 @@ function render(s) {
   statusEl.textContent = STATUS[s.phase] || STATUS.home;
   const inTask = !['home', 'setup', 'finish'].includes(s.phase);
   $('#btnStop').hidden = !inTask;
-  $('#btnSettings').hidden = inTask; // keep the header roomy mid-task
+  // keep the header roomy mid-task: Stop replaces settings and hide
+  $('#btnSettings').hidden = inTask;
+  $('#btnMin').hidden = inTask;
   avatar.classList.toggle('thinking', s.phase === 'thinking');
   avatar.classList.toggle('happy', s.phase === 'finish' && s.success);
   input.placeholder = s.phase === 'ask' ? 'Your answer…' : 'Type here…';
 
   if (s.phase === 'ask') speak(s.question);
   else if (['point', 'keys', 'finish', 'error'].includes(s.phase)) speak(s.say);
+  if (s.phase === 'finish') applyPrefs(prefs, true);
 }
 
 // ---------- actions ----------
@@ -293,7 +315,7 @@ window.naomi.onFeedback((fb) => {
     speak(fb.then === 'type' ? 'Good. Now type.' : 'Good.');
   } else if (fb.type === 'nudge') {
     if (fb.reason === 'typing-idle') {
-      showToast("Finished typing? Press the green button.", true, 6000);
+      showToast('Finished typing? Press the green button.', true, 6000);
       const done = document.getElementById('btnDone');
       if (done) done.classList.add('pulse');
     } else {
@@ -310,13 +332,14 @@ window.naomi.onState((s) => {
 });
 
 // ---------- settings ----------
-async function applyPrefs(p) {
-  prefs = p;
-  document.body.classList.toggle('size-xlarge', p.textSize === 'xlarge');
-  $('#optVoice').checked = p.voice;
-  $('#optXL').checked = p.textSize === 'xlarge';
-  $('#optSpot').checked = p.spotlight;
-  $('#keyState').textContent = p.keyFromEnv ? '(set from .env)' : p.hasApiKey ? '(saved ✓)' : '(not set)';
+async function applyPrefs(p, refresh = false) {
+  prefs = refresh ? await window.naomi.getPrefs() : p;
+  document.body.classList.toggle('size-xlarge', prefs.textSize === 'xlarge');
+  $('#optVoice').checked = prefs.voice;
+  $('#optXL').checked = prefs.textSize === 'xlarge';
+  $('#optSpot').checked = prefs.spotlight;
+  $('#memCount').textContent = prefs.memoryCount || 0;
+  $('#keyState').textContent = prefs.keyFromEnv ? '(set from .env)' : prefs.hasApiKey ? '(saved ✓)' : '(not set)';
 }
 
 $('#btnSettings').addEventListener('click', () => ($('#settings').hidden = false));
@@ -329,6 +352,10 @@ $('#optXL').addEventListener('change', async (e) =>
   applyPrefs(await window.naomi.setPrefs({ textSize: e.target.checked ? 'xlarge' : 'large' })),
 );
 $('#optSpot').addEventListener('change', async (e) => applyPrefs(await window.naomi.setPrefs({ spotlight: e.target.checked })));
+$('#btnForget').addEventListener('click', async () => {
+  applyPrefs(await window.naomi.clearMemory());
+  showToast('Done. Naomi has forgotten everything.', false, 2500);
+});
 $('#btnSaveKey').addEventListener('click', async () => {
   const el = $('#optKey');
   applyPrefs(await window.naomi.setApiKey(el.value));
@@ -357,6 +384,5 @@ $('#btnClose').addEventListener('click', () => window.naomi.windowAction('quit')
 (async () => {
   applyPrefs(await window.naomi.getPrefs());
   render(await window.naomi.getState());
-  const greetingLine = "Hello, I'm Naomi. What would you like to do today?";
-  setTimeout(() => state.phase === 'home' && speak(greetingLine), 600);
+  setTimeout(() => state.phase === 'home' && speak("Hello, I'm Naomi. What would you like to do today?"), 600);
 })();

@@ -23,19 +23,39 @@ const SCRIPT = [
     },
   },
   {
+    // Sits under Naomi's panel on purpose: she should scoot to the other side.
+    name: 'point',
+    input: {
+      say: 'This is where your new email appears.',
+      bubble: 'Look here',
+      action: 'look',
+      fx: 0.86,
+      fy: 0.5,
+      type_text: '',
+      target: 'the new email window',
+    },
+  },
+  {
     name: 'point',
     input: {
       say: 'Type her email address in this box.',
       bubble: 'Type here',
       action: 'type',
-      fx: 0.3,
+      fx: 0.6,
       fy: 0.42,
       type_text: 'alysa2002@gmail.com',
       target: 'the To box',
     },
   },
   { name: 'show_keys', input: { say: 'Hold Ctrl and press Enter to send it.', keys: ['Ctrl', 'Enter'] } },
-  { name: 'finish', input: { say: 'Your email is on its way to your granddaughter. Well done!', success: true } },
+  {
+    name: 'finish',
+    input: {
+      say: 'Your email is on its way to your granddaughter. Well done!',
+      success: true,
+      remember: ["Granddaughter Alysa's email: alysa2002@gmail.com", 'Uses Gmail in Chrome'],
+    },
+  },
 ];
 
 function screenshotSize(messages) {
@@ -51,7 +71,7 @@ function screenshotSize(messages) {
 function resolve(step, size) {
   if (step.name !== 'point') return step.input;
   const { fx, fy, ...rest } = step.input;
-  return { ...rest, x: Math.round(fx * size.width), y: Math.round(fy * size.height) };
+  return { ...rest, x: Math.round(fx * size.width), y: Math.round(fy * size.height), from_zoom: false };
 }
 
 function createMockClient({ delayMs = 1200 } = {}) {

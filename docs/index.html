@@ -1,0 +1,1106 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Naomi — your patient computer companion</title>
+    <meta
+      name="description"
+      content="Tell Naomi what you want to do on your computer. She asks what she needs, then points at the exact spot on your screen, one step at a time."
+    />
+    <meta property="og:title" content="Naomi — your patient computer companion" />
+    <meta
+      property="og:description"
+      content="You don't need to know how to use a computer. You just need to know what you want to do."
+    />
+    <link rel="icon" href="icon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;700;800;900&family=Hind+Siliguri:wght@500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --coral: #ff6a4d;
+        --coral-deep: #e2482b;
+        --coral-soft: #ffe6df;
+        --cream: #fffaf5;
+        --ink: #1d2140;
+        --ink-soft: #555a7d;
+        --line: #efe4da;
+        --green: #1f9e63;
+        --radius: 22px;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        margin: 0;
+        font-family: Nunito, 'Segoe UI', system-ui, sans-serif;
+        color: var(--ink);
+        background: var(--cream);
+        line-height: 1.55;
+        font-size: 18px;
+      }
+      a {
+        color: inherit;
+      }
+      .wrap {
+        max-width: 1120px;
+        margin: 0 auto;
+        padding: 0 24px;
+      }
+
+      /* ---------- nav ---------- */
+      nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 20px 0;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 900;
+        font-size: 26px;
+        text-decoration: none;
+      }
+      .brand svg {
+        width: 42px;
+        height: 42px;
+      }
+      nav .links {
+        display: flex;
+        gap: 22px;
+        align-items: center;
+        font-weight: 700;
+      }
+      nav .links a {
+        text-decoration: none;
+        color: var(--ink-soft);
+      }
+      nav .links a:hover {
+        color: var(--ink);
+      }
+      nav .links a.btn,
+      nav .links a.btn:hover {
+        color: #fff;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 15px 24px;
+        border-radius: 999px;
+        font-weight: 800;
+        text-decoration: none;
+        border: 0;
+        cursor: pointer;
+        font: inherit;
+        font-weight: 800;
+        transition: transform 140ms ease, box-shadow 140ms ease;
+      }
+      .btn:hover {
+        transform: translateY(-2px);
+      }
+      .btn-coral {
+        background: var(--coral);
+        color: #fff;
+        box-shadow: 0 10px 24px rgba(255, 106, 77, 0.35);
+      }
+      .btn-ghost {
+        background: #fff;
+        border: 2px solid var(--line);
+      }
+      .btn-small {
+        padding: 10px 18px;
+        font-size: 16px;
+      }
+
+      /* ---------- hero ---------- */
+      .hero {
+        text-align: center;
+        padding: 40px 0 10px;
+      }
+      .eyebrow {
+        display: inline-block;
+        background: var(--coral-soft);
+        color: var(--coral-deep);
+        font-weight: 800;
+        font-size: 15px;
+        padding: 6px 14px;
+        border-radius: 999px;
+        letter-spacing: 0.3px;
+      }
+      h1 {
+        font-size: clamp(34px, 5.4vw, 60px);
+        line-height: 1.08;
+        margin: 18px auto 16px;
+        max-width: 900px;
+        font-weight: 900;
+        letter-spacing: -0.5px;
+      }
+      h1 em {
+        font-style: normal;
+        color: var(--coral);
+      }
+      .lede {
+        font-size: clamp(18px, 2vw, 21px);
+        color: var(--ink-soft);
+        max-width: 700px;
+        margin: 0 auto 28px;
+      }
+      .bn {
+        font-family: 'Hind Siliguri', sans-serif;
+        color: var(--ink-soft);
+        margin: -14px 0 26px;
+      }
+      .cta {
+        display: flex;
+        gap: 14px;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+
+      /* ---------- demo stage ---------- */
+      .demo {
+        margin: 46px auto 10px;
+        max-width: 1040px;
+      }
+      .stage-wrap {
+        position: relative;
+        width: 100%;
+      }
+      .stage {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 1000px;
+        height: 590px;
+        transform-origin: 0 0;
+        border-radius: 26px;
+        background: linear-gradient(135deg, #cfe0ff, #f3d9ff 55%, #ffe2d6);
+        box-shadow: 0 30px 70px rgba(29, 33, 64, 0.22);
+        overflow: hidden;
+        font-size: 15px;
+      }
+      .browser {
+        position: absolute;
+        left: 28px;
+        top: 28px;
+        width: 640px;
+        height: 520px;
+        background: #fff;
+        border-radius: 14px;
+        box-shadow: 0 12px 30px rgba(29, 33, 64, 0.2);
+        overflow: hidden;
+      }
+      .bbar {
+        height: 44px;
+        background: #f1f2f6;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 0 14px;
+      }
+      .bbar .dots span {
+        display: inline-block;
+        width: 11px;
+        height: 11px;
+        border-radius: 50%;
+        margin-right: 5px;
+        background: #ff6159;
+      }
+      .bbar .dots span:nth-child(2) {
+        background: #ffbd2e;
+      }
+      .bbar .dots span:nth-child(3) {
+        background: #28c941;
+      }
+      .url {
+        flex: 1;
+        background: #fff;
+        border-radius: 999px;
+        padding: 6px 14px;
+        color: #7a7f99;
+        font-size: 13px;
+      }
+      .mail {
+        position: relative;
+        display: flex;
+        height: calc(100% - 44px);
+      }
+      .mail aside {
+        width: 150px;
+        padding: 14px 10px;
+        border-right: 1px solid #eef0f5;
+      }
+      .compose {
+        display: block;
+        width: 100%;
+        border: 0;
+        border-radius: 14px;
+        background: #dbe7ff;
+        padding: 12px 10px;
+        font: inherit;
+        font-weight: 800;
+        color: #1f3a8a;
+        margin-bottom: 12px;
+        text-align: left;
+      }
+      .folder {
+        padding: 8px 12px;
+        border-radius: 999px;
+        color: #444;
+        font-weight: 700;
+      }
+      .folder.active {
+        background: #fde8e3;
+        color: var(--coral-deep);
+      }
+      .list {
+        flex: 1;
+      }
+      .row {
+        display: flex;
+        gap: 10px;
+        padding: 12px 16px;
+        border-bottom: 1px solid #f1f2f6;
+      }
+      .row b {
+        width: 110px;
+        flex: none;
+      }
+      .row span {
+        color: #667;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .row.hl {
+        background: #fff6e8;
+      }
+      .open-mail {
+        padding: 18px 20px;
+      }
+      .open-mail h4 {
+        margin: 0 0 6px;
+        font-size: 18px;
+      }
+      .from {
+        color: #667;
+        margin-bottom: 12px;
+      }
+      .from .addr {
+        color: var(--ink);
+        font-weight: 800;
+        padding: 1px 4px;
+        border-radius: 6px;
+      }
+      .composer {
+        position: absolute;
+        right: 14px;
+        bottom: 0;
+        width: 330px;
+        height: 330px;
+        background: #fff;
+        border-radius: 12px 12px 0 0;
+        box-shadow: 0 -4px 26px rgba(0, 0, 0, 0.18);
+        display: flex;
+        flex-direction: column;
+        transform: translateY(110%);
+        transition: transform 450ms cubic-bezier(0.2, 0.9, 0.3, 1);
+      }
+      .composer.open {
+        transform: translateY(0);
+      }
+      .c-head {
+        background: #404658;
+        color: #fff;
+        padding: 10px 14px;
+        border-radius: 12px 12px 0 0;
+        font-weight: 800;
+      }
+      .c-row {
+        display: flex;
+        gap: 10px;
+        padding: 9px 14px;
+        border-bottom: 1px solid #eef0f5;
+        color: #8a8fa6;
+        min-height: 40px;
+      }
+      .c-row .field {
+        color: var(--ink);
+        font-weight: 700;
+      }
+      .c-body {
+        flex: 1;
+        padding: 12px 14px;
+        color: var(--ink);
+      }
+      .c-send {
+        align-self: flex-start;
+        margin: 0 14px 14px;
+        background: #1f5eff;
+        color: #fff;
+        border: 0;
+        border-radius: 999px;
+        padding: 10px 22px;
+        font: inherit;
+        font-weight: 800;
+      }
+      .caret::after {
+        content: '|';
+        animation: blink 1s steps(1) infinite;
+        color: var(--coral);
+        margin-left: 1px;
+      }
+      @keyframes blink {
+        50% {
+          opacity: 0;
+        }
+      }
+      .sent-toast {
+        position: absolute;
+        left: 50%;
+        bottom: 18px;
+        transform: translate(-50%, 20px);
+        opacity: 0;
+        background: #323545;
+        color: #fff;
+        padding: 10px 18px;
+        border-radius: 10px;
+        transition: all 300ms ease;
+      }
+      .sent-toast.show {
+        opacity: 1;
+        transform: translate(-50%, 0);
+      }
+
+      /* mini Naomi panel */
+      .npanel {
+        position: absolute;
+        right: 26px;
+        top: 28px;
+        width: 290px;
+        height: 520px;
+        background: var(--cream);
+        border-radius: 22px;
+        box-shadow: 0 12px 30px rgba(29, 33, 64, 0.22);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      .nhead {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 14px;
+        border-bottom: 1px solid var(--line);
+        background: #fff;
+      }
+      .nhead svg {
+        width: 40px;
+        height: 40px;
+      }
+      .nhead b {
+        font-size: 18px;
+        display: block;
+        line-height: 1.1;
+      }
+      .nhead small {
+        color: var(--ink-soft);
+      }
+      .msgs {
+        flex: 1;
+        padding: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        justify-content: flex-end;
+        overflow: hidden;
+      }
+      .m {
+        max-width: 92%;
+        padding: 10px 13px;
+        border-radius: 16px;
+        font-weight: 700;
+        animation: pop 300ms ease;
+      }
+      .m.naomi {
+        background: #fff;
+        border: 1px solid var(--line);
+        align-self: flex-start;
+        font-size: 16px;
+      }
+      .m.you {
+        background: var(--ink);
+        color: #fff;
+        align-self: flex-end;
+        font-weight: 600;
+      }
+      .m.step {
+        border: 2px solid var(--coral);
+      }
+      .m.done {
+        background: #e2f6ec;
+        color: var(--green);
+        border: 0;
+      }
+      .chips {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .chip {
+        padding: 7px 12px;
+        border-radius: 12px;
+        background: #fff;
+        border: 2px solid var(--line);
+        font-weight: 800;
+      }
+      .chip.picked {
+        border-color: var(--coral);
+        background: var(--coral-soft);
+      }
+      @keyframes pop {
+        from {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+      }
+
+      /* pointer */
+      .dot {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 0;
+        height: 0;
+        transition: transform 900ms cubic-bezier(0.22, 0.9, 0.3, 1), opacity 300ms ease;
+        opacity: 0;
+        z-index: 5;
+      }
+      .dot b,
+      .dot i {
+        position: absolute;
+        left: -14px;
+        top: -14px;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+      }
+      .dot b {
+        background: radial-gradient(circle at 35% 35%, #ff9a7f, var(--coral) 55%, var(--coral-deep));
+        border: 4px solid #fff;
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+        transition: background 200ms;
+      }
+      .dot i {
+        border: 4px solid var(--coral);
+        animation: pulse 1.8s ease-out infinite;
+      }
+      .dot i + i {
+        animation-delay: 0.9s;
+      }
+      .dot.hit b {
+        background: var(--green);
+      }
+      .dot.hit i {
+        border-color: var(--green);
+      }
+      @keyframes pulse {
+        to {
+          transform: scale(3.2);
+          opacity: 0;
+        }
+      }
+      .bubble {
+        position: absolute;
+        left: 0;
+        top: 0;
+        background: var(--ink);
+        color: #fff;
+        padding: 9px 15px;
+        border-radius: 14px;
+        font-weight: 800;
+        font-size: 17px;
+        white-space: nowrap;
+        border: 2px solid #fff;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        transition: transform 900ms cubic-bezier(0.22, 0.9, 0.3, 1), opacity 300ms ease, background 200ms;
+        opacity: 0;
+        z-index: 6;
+      }
+      .bubble.hit {
+        background: var(--green);
+      }
+      .cursor {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 22px;
+        height: 22px;
+        z-index: 7;
+        transition: transform 700ms cubic-bezier(0.4, 0, 0.2, 1);
+        filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.35));
+      }
+      .cursor.press {
+        scale: 0.85;
+      }
+      .demo-caption {
+        text-align: center;
+        color: var(--ink-soft);
+        font-size: 15px;
+        margin-top: 12px;
+      }
+
+      /* ---------- sections ---------- */
+      section.block {
+        padding: 70px 0 10px;
+      }
+      h2 {
+        font-size: clamp(28px, 3.6vw, 40px);
+        line-height: 1.15;
+        margin: 0 0 12px;
+        font-weight: 900;
+        text-align: center;
+      }
+      .sub {
+        text-align: center;
+        color: var(--ink-soft);
+        max-width: 680px;
+        margin: 0 auto 36px;
+      }
+      .steps {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+      }
+      .card {
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 26px;
+      }
+      .card .n {
+        display: inline-grid;
+        place-items: center;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: var(--coral);
+        color: #fff;
+        font-weight: 900;
+        margin-bottom: 10px;
+      }
+      .card h3 {
+        margin: 0 0 6px;
+        font-size: 21px;
+      }
+      .card p {
+        margin: 0;
+        color: var(--ink-soft);
+      }
+      .card .quote {
+        margin-top: 12px;
+        background: var(--cream);
+        border-radius: 14px;
+        padding: 10px 14px;
+        font-weight: 700;
+        color: var(--ink);
+      }
+      .features {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 18px;
+      }
+      .feature .icon {
+        font-size: 32px;
+      }
+      .compare {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        max-width: 860px;
+        margin: 0 auto;
+      }
+      .compare .card h3 {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      .compare ul {
+        margin: 8px 0 0;
+        padding-left: 20px;
+        color: var(--ink-soft);
+      }
+      .compare .good {
+        border: 2px solid var(--coral);
+      }
+      .share {
+        text-align: center;
+        background: var(--ink);
+        color: #fff;
+        border-radius: 30px;
+        padding: 50px 24px;
+        margin: 80px 0 40px;
+      }
+      .share h2 {
+        color: #fff;
+      }
+      .share p {
+        color: #c9cbe0;
+        max-width: 620px;
+        margin: 0 auto 26px;
+      }
+      .share .cta .btn-ghost {
+        background: transparent;
+        color: #fff;
+        border-color: #4a4f73;
+      }
+      footer {
+        text-align: center;
+        color: var(--ink-soft);
+        font-size: 15px;
+        padding: 20px 0 50px;
+      }
+
+      @media (max-width: 860px) {
+        .steps,
+        .features,
+        .compare {
+          grid-template-columns: 1fr;
+        }
+        nav .links a.hide-sm {
+          display: none;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          animation: none !important;
+          transition: none !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <nav>
+        <a class="brand" href="#">
+          <svg viewBox="0 0 64 64" aria-hidden="true">
+            <defs>
+              <radialGradient id="lf" cx="35%" cy="30%" r="80%">
+                <stop offset="0" stop-color="#ffb199" />
+                <stop offset="0.6" stop-color="#ff6a4d" />
+                <stop offset="1" stop-color="#e2482b" />
+              </radialGradient>
+            </defs>
+            <circle cx="32" cy="32" r="30" fill="url(#lf)" />
+            <ellipse cx="23" cy="28" rx="3.6" ry="4.6" fill="#1d2140" />
+            <ellipse cx="41" cy="28" rx="3.6" ry="4.6" fill="#1d2140" />
+            <path d="M22 40 Q32 48 42 40" stroke="#1d2140" stroke-width="3.4" fill="none" stroke-linecap="round" />
+          </svg>
+          Naomi
+        </a>
+        <div class="links">
+          <a class="hide-sm" href="#how">How it works</a>
+          <a class="hide-sm" href="#features">Features</a>
+          <a class="btn btn-coral btn-small" href="https://github.com/AuvroIslam/Naomi#getting-started">Get Naomi</a>
+        </div>
+      </nav>
+
+      <header class="hero">
+        <span class="eyebrow">A patient companion for people who find computers hard</span>
+        <h1>You don't need to know how to use a computer. <em>You just need to know what you want to do.</em></h1>
+        <p class="lede">
+          Tell Naomi what you want to do. She asks what she needs to know, then points at the exact spot on your screen —
+          one gentle step at a time — until it's done.
+        </p>
+        <p class="bn">নাওমি — আপনার ধৈর্যশীল কম্পিউটার সঙ্গী। আপনি শুধু বলুন কী করতে চান।</p>
+        <div class="cta">
+          <a class="btn btn-coral" href="https://github.com/AuvroIslam/Naomi#getting-started">⬇ Get Naomi for Windows</a>
+          <a class="btn btn-ghost" href="#how">See how it works</a>
+        </div>
+      </header>
+
+      <div class="demo" aria-label="Animated demo of Naomi guiding someone to send an email">
+        <div class="stage-wrap" id="stageWrap">
+          <div class="stage" id="stage">
+            <div class="browser">
+              <div class="bbar">
+                <span class="dots"><span></span><span></span><span></span></span>
+                <div class="url">mail.example.com</div>
+              </div>
+              <div class="mail">
+                <aside>
+                  <button class="compose" id="dCompose">✏️ Compose</button>
+                  <div class="folder active" id="dInbox">📥 Inbox</div>
+                  <div class="folder" id="dSent">📤 Sent</div>
+                </aside>
+                <div class="list" id="dList"></div>
+                <div class="composer" id="dComposer">
+                  <div class="c-head">New message</div>
+                  <div class="c-row">To <span class="field" id="dTo"></span></div>
+                  <div class="c-row">Subject <span class="field" id="dSubj"></span></div>
+                  <div class="c-body" id="dBody"></div>
+                  <button class="c-send" id="dSend">Send</button>
+                </div>
+                <div class="sent-toast" id="dToast">Message sent ✓</div>
+              </div>
+            </div>
+
+            <div class="npanel">
+              <div class="nhead">
+                <svg viewBox="0 0 64 64" aria-hidden="true">
+                  <circle cx="32" cy="32" r="30" fill="#ff6a4d" />
+                  <ellipse cx="23" cy="28" rx="3.6" ry="4.6" fill="#1d2140" />
+                  <ellipse cx="41" cy="28" rx="3.6" ry="4.6" fill="#1d2140" />
+                  <path d="M22 40 Q32 48 42 40" stroke="#1d2140" stroke-width="3.4" fill="none" stroke-linecap="round" />
+                </svg>
+                <div><b>Naomi</b><small id="dStatus">Here to help</small></div>
+              </div>
+              <div class="msgs" id="dMsgs"></div>
+            </div>
+
+            <div class="dot" id="dDot"><i></i><i></i><b></b></div>
+            <div class="bubble" id="dBubble"></div>
+            <svg class="cursor" id="dCursor" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3 2l7 19 2.6-7.4L20 11z" fill="#fff" stroke="#111" stroke-width="1.6" stroke-linejoin="round" />
+            </svg>
+          </div>
+        </div>
+        <p class="demo-caption">A real session, re-created: Naomi helps someone email their granddaughter — even though they didn't know her address.</p>
+      </div>
+
+      <section class="block" id="how">
+        <h2>Like a patient friend sitting beside you</h2>
+        <p class="sub">Naomi doesn't teach you how computers work. She helps you do what you came to do.</p>
+        <div class="steps">
+          <div class="card">
+            <span class="n">1</span>
+            <h3>Say what you want</h3>
+            <p>In your own words — typed, or spoken. No technical terms needed.</p>
+            <div class="quote">"How do I make a video call with my son?"</div>
+          </div>
+          <div class="card">
+            <span class="n">2</span>
+            <h3>Naomi works out what's needed</h3>
+            <p>If something is missing, she asks simply — one question at a time — and helps you find it.</p>
+            <div class="quote">"Do you know his email address? We can find it in an old message."</div>
+          </div>
+          <div class="card">
+            <span class="n">3</span>
+            <h3>Follow the orange dot</h3>
+            <p>It glides to the exact button on your real screen. Naomi watches, cheers you on, and adapts.</p>
+            <div class="quote">"Good. Now click here."</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="block" id="features">
+        <h2>Built for patience, not for experts</h2>
+        <p class="sub">Every detail is designed so nobody ever feels stupid for not knowing something.</p>
+        <div class="features">
+          <div class="card feature">
+            <div class="icon">🎯</div>
+            <h3>Points at your real screen</h3>
+            <p>Not a video, not a simulation. The dot lands on the actual button, in whatever app you use.</p>
+          </div>
+          <div class="card feature">
+            <div class="icon">👀</div>
+            <h3>Notices what you do</h3>
+            <p>Right click? "Good!" Something else? "That's okay — let's try this one." Never "wrong".</p>
+          </div>
+          <div class="card feature">
+            <div class="icon">🧠</div>
+            <h3>Understands the whole goal</h3>
+            <p>She figures out what you'll need — an address, an app, a file — before you get lost.</p>
+          </div>
+          <div class="card feature">
+            <div class="icon">📝</div>
+            <h3>Remembers for next time</h3>
+            <p>"I'll remember Alysa's email." Kept only on your computer, erasable anytime. Never passwords.</p>
+          </div>
+          <div class="card feature">
+            <div class="icon">🛡️</div>
+            <h3>Watches out for scams</h3>
+            <p>Gently warns about fake virus popups, gift-card requests, and strangers asking for control.</p>
+          </div>
+          <div class="card feature">
+            <div class="icon">🗣️</div>
+            <h3>Speaks your language</h3>
+            <p>Reads every step aloud, listens with voice typing, and answers in your language — including বাংলা.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="block">
+        <h2>Not another tutorial</h2>
+        <p class="sub">Tutorials assume you know the words. Remote-control tools take over. Naomi does neither.</p>
+        <div class="compare">
+          <div class="card">
+            <h3>😣 The usual way</h3>
+            <ul>
+              <li>"Click the hamburger menu, then Settings…"</li>
+              <li>Videos that go too fast</li>
+              <li>A fixed script that breaks when something looks different</li>
+              <li>Someone else takes over your computer</li>
+            </ul>
+          </div>
+          <div class="card good">
+            <h3>😊 With Naomi</h3>
+            <ul>
+              <li>"Click here." — and a dot shows exactly where</li>
+              <li>One small step at a time, at your pace</li>
+              <li>Adapts to what's really on your screen</li>
+              <li>You do it yourself — and learn you can</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="share" id="share">
+        <h2>Know someone who needs Naomi?</h2>
+        <p>
+          Your parents, grandparents, a neighbour who calls you every time the printer acts up. Share Naomi with them —
+          and help us reach everyone who knows what they want to do, but not how.
+        </p>
+        <div class="cta">
+          <a class="btn btn-coral" id="shareWa" target="_blank" rel="noopener">Share on WhatsApp</a>
+          <a class="btn btn-ghost" id="shareFb" target="_blank" rel="noopener">Share on Facebook</a>
+          <a class="btn btn-ghost" href="https://github.com/AuvroIslam/Naomi" target="_blank" rel="noopener">⭐ Star on GitHub</a>
+          <button class="btn btn-ghost" id="copyLink">🔗 Copy link</button>
+        </div>
+      </section>
+
+      <footer>Made with patience at HypoMatrix Hack '26 · Dhaka, Bangladesh · <a href="https://github.com/AuvroIslam/Naomi">Source on GitHub</a></footer>
+    </div>
+
+    <script>
+      // ---------- share links ----------
+      const pageUrl = location.href.split('#')[0];
+      const shareText = "Naomi helps people who find computers hard: tell her what you want to do, and she points the way on your screen. ";
+      document.getElementById('shareWa').href = 'https://wa.me/?text=' + encodeURIComponent(shareText + pageUrl);
+      document.getElementById('shareFb').href = 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(pageUrl);
+      document.getElementById('copyLink').addEventListener('click', async (e) => {
+        try {
+          await navigator.clipboard.writeText(pageUrl);
+          e.target.textContent = '✓ Link copied';
+        } catch {
+          e.target.textContent = pageUrl;
+        }
+      });
+
+      // ---------- demo: scale the 1000x590 stage to fit ----------
+      const stage = document.getElementById('stage');
+      const wrapEl = document.getElementById('stageWrap');
+      let scale = 1;
+      function fit() {
+        scale = Math.min(1, wrapEl.clientWidth / 1000);
+        stage.style.transform = `scale(${scale})`;
+        wrapEl.style.height = `${590 * scale}px`;
+      }
+      addEventListener('resize', fit);
+      fit();
+
+      // ---------- demo timeline ----------
+      const $ = (id) => document.getElementById(id);
+      const dot = $('dDot');
+      const bubble = $('dBubble');
+      const cursor = $('dCursor');
+      const msgs = $('dMsgs');
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+      const INBOX = [
+        ['Rafi', 'Photos from the weekend 📷'],
+        ['Pharmacy', 'Your prescription is ready'],
+        ['Nasrin', 'Tea on Friday?'],
+      ];
+      const SENT = [
+        ['Alysa', 'Happy birthday, my darling! 🎂'],
+        ['Rafi', 'Thank you for the photos'],
+      ];
+
+      function center(el) {
+        const s = stage.getBoundingClientRect();
+        const r = el.getBoundingClientRect();
+        return { x: (r.left - s.left + r.width / 2) / scale, y: (r.top - s.top + r.height / 2) / scale };
+      }
+      const place = (el, x, y) => (el.style.transform = `translate(${x}px, ${y}px)`);
+
+      function rows(list, highlight) {
+        $('dList').replaceChildren(
+          ...list.map(([who, what], i) => {
+            const row = document.createElement('div');
+            row.className = 'row' + (highlight === i ? ' hl' : '');
+            row.id = 'row' + i;
+            const b = document.createElement('b');
+            b.textContent = who;
+            const s = document.createElement('span');
+            s.textContent = what;
+            row.append(b, s);
+            return row;
+          }),
+        );
+      }
+
+      function msg(text, cls = 'naomi') {
+        const m = document.createElement('div');
+        m.className = 'm ' + cls;
+        m.textContent = text;
+        msgs.append(m);
+        while (msgs.children.length > 5) msgs.firstChild.remove();
+        return m;
+      }
+
+      function chips(options, pick) {
+        const box = document.createElement('div');
+        box.className = 'chips';
+        options.forEach((o) => {
+          const c = document.createElement('span');
+          c.className = 'chip';
+          c.textContent = o;
+          box.append(c);
+        });
+        msgs.append(box);
+        return async () => {
+          await wait(1100);
+          box.children[pick].classList.add('picked');
+          await wait(500);
+          box.remove();
+          msg(options[pick], 'you');
+        };
+      }
+
+      async function point(el, label) {
+        const p = center(el);
+        dot.classList.remove('hit');
+        bubble.classList.remove('hit');
+        bubble.textContent = label;
+        dot.style.opacity = 1;
+        bubble.style.opacity = 1;
+        place(dot, p.x, p.y);
+        place(bubble, Math.min(p.x + 26, 1000 - bubble.offsetWidth - 20), p.y + 22);
+        await wait(1000);
+      }
+
+      async function userClicks(el) {
+        const p = center(el);
+        place(cursor, p.x - 3, p.y - 2);
+        await wait(900);
+        cursor.classList.add('press');
+        dot.classList.add('hit');
+        bubble.classList.add('hit');
+        bubble.textContent = 'Good!';
+        await wait(160);
+        cursor.classList.remove('press');
+        await wait(500);
+      }
+
+      async function typeInto(el, text) {
+        el.classList.add('caret');
+        for (const ch of text) {
+          el.textContent += ch;
+          await wait(55 + Math.random() * 60);
+        }
+        el.classList.remove('caret');
+      }
+
+      function hidePointer() {
+        dot.style.opacity = 0;
+        bubble.style.opacity = 0;
+      }
+
+      function reset() {
+        msgs.replaceChildren();
+        rows(INBOX);
+        $('dInbox').classList.add('active');
+        $('dSent').classList.remove('active');
+        $('dComposer').classList.remove('open');
+        $('dToast').classList.remove('show');
+        for (const id of ['dTo', 'dSubj', 'dBody']) $(id).textContent = '';
+        hidePointer();
+        place(dot, 820, 70);
+        place(bubble, 820, 90);
+        place(cursor, 520, 470);
+        $('dStatus').textContent = 'Here to help';
+      }
+
+      async function play() {
+        reset();
+        await wait(700);
+        msg('What would you like to do today?');
+        await wait(1300);
+        msg('How do I send an email to my granddaughter?', 'you');
+        await wait(1200);
+        msg("Do you know your granddaughter's email address?");
+        await chips(['Yes', "No, I don't"], 1)();
+        await wait(700);
+        msg("That's okay. Have you emailed her before? We can find it there.");
+        await chips(['Yes, for her birthday', 'No'], 0)();
+        await wait(600);
+
+        $('dStatus').textContent = 'Follow the orange dot';
+        msg('Click here to see emails you sent.', 'naomi step');
+        await point($('dSent'), 'Click here');
+        await userClicks($('dSent'));
+        $('dSent').classList.add('active');
+        $('dInbox').classList.remove('active');
+        rows(SENT, 0);
+        await wait(500);
+
+        msg('There she is! Click her email.', 'naomi step');
+        await point($('row0'), 'Click here');
+        await userClicks($('row0'));
+        $('dList').innerHTML =
+          '<div class="open-mail"><h4>Happy birthday, my darling! 🎂</h4><div class="from">To: <span class="addr" id="dAddr">alysa2002@gmail.com</span></div><div>Wishing you the happiest day. Love, Nanu</div></div>';
+        await wait(500);
+        msg("This is her address. I'll remember it for next time.", 'naomi step');
+        await point($('dAddr'), 'Her email address');
+        await wait(1800);
+
+        msg('Now click here to write a new email.', 'naomi step');
+        await point($('dCompose'), 'Click here');
+        await userClicks($('dCompose'));
+        $('dComposer').classList.add('open');
+        await wait(600);
+
+        msg('Type her address here.', 'naomi step');
+        await point($('dTo'), 'Type: alysa2002@gmail.com');
+        await typeInto($('dTo'), 'alysa2002@gmail.com');
+        await wait(400);
+
+        msg('What would you like to say to her?');
+        await wait(1400);
+        msg('I love you. See you on Sunday!', 'you');
+        await wait(700);
+        msg('Lovely. Type it here.', 'naomi step');
+        await point($('dBody'), 'Type here');
+        await typeInto($('dBody'), 'I love you. See you on Sunday! ❤️');
+        await wait(400);
+
+        msg('Now click Send.', 'naomi step');
+        await point($('dSend'), 'Click to send');
+        await userClicks($('dSend'));
+        hidePointer();
+        $('dComposer').classList.remove('open');
+        $('dToast').classList.add('show');
+        $('dStatus').textContent = 'All done!';
+        msg('🎉 Sent! Your granddaughter will love it. Well done!', 'done');
+        await wait(4200);
+      }
+
+      (async () => {
+        await document.fonts.ready;
+        for (;;) await play();
+      })();
+    </script>
+  </body>
+</html>

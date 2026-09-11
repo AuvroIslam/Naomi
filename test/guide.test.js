@@ -180,7 +180,7 @@ test('a 400 on optional features falls back once to the plain request shape', as
   assert.equal(client.calls[1].fallbacks, undefined);
   assert.equal(client.calls[1].betas, undefined);
   assert.equal(client.calls[1].output_config, undefined);
-  assert.equal(client.calls[1].tools.length, 4);
+  assert.equal(client.calls[1].tools.length, 5);
 });
 
 test('classifyError maps statuses to friendly kinds', () => {

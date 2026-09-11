@@ -1,5 +1,5 @@
 // GuideSession: one goal, one conversation with Claude.
-// Claude sees the screen, calls one tool per turn (ask_user / point / show_keys / finish),
+// Claude sees the screen, calls one tool per turn (ask_user / point / zoom_in / show_keys / finish),
 // the person acts, and we send back what they did plus a fresh screenshot.
 
 const { EventEmitter } = require('node:events');
@@ -7,6 +7,7 @@ const { SYSTEM_PROMPT, TOOLS } = require('./prompts');
 const { clamp } = require('./geometry');
 
 const DEFAULT_MODEL = 'claude-opus-5';
+const MAX_ZOOMS_IN_A_ROW = 2;
 
 function imageBlock(shot) {
   return { type: 'image', source: { type: 'base64', media_type: shot.mediaType, data: shot.base64 } };
@@ -23,7 +24,19 @@ function classifyError(err) {
   if (!status) {
     return { kind: 'offline', message: "I can't reach the internet right now. Let's check the connection and try again." };
   }
-  return { kind: 'unknown', message: 'Something went wrong on my side. Let\'s try that again.', detail: err.message };
+  return { kind: 'unknown', message: "Something went wrong on my side. Let's try that again.", detail: err.message };
+}
+
+// zoom_in gives a center + size; turn it into a top-left region inside the screenshot.
+function zoomRegion(input, shot) {
+  const width = clamp(Math.round(input.width || 0), 40, shot.width);
+  const height = clamp(Math.round(input.height || 0), 40, shot.height);
+  return {
+    x: clamp(Math.round((input.x || 0) - width / 2), 0, shot.width - width),
+    y: clamp(Math.round((input.y || 0) - height / 2), 0, shot.height - height),
+    width,
+    height,
+  };
 }
 
 // Turn what the person did into words for Claude. shot = the screenshot the step was based on.
@@ -57,29 +70,44 @@ function describeObservation(obs, pending, shot) {
 }
 
 class GuideSession extends EventEmitter {
-  constructor({ client, capture, model = DEFAULT_MODEL, effort = 'low' }) {
+  /**
+   * @param {object} deps
+   * @param {object} deps.client Anthropic client (or a stand-in with beta.messages.create)
+   * @param {() => Promise<object>} deps.capture screenshot of the whole screen
+   * @param {(region, shot) => Promise<object>} [deps.zoom] magnified screenshot of a region
+   * @param {string[]} [deps.memories] facts remembered from earlier sessions
+   */
+  constructor({ client, capture, zoom = null, memories = [], model = DEFAULT_MODEL, effort = 'low' }) {
     super();
     this.client = client;
     this.capture = capture;
+    this.zoom = zoom;
+    this.memories = memories;
     this.model = model;
     this.effort = effort;
     this.messages = [];
     this.pending = null;
     this.busy = false;
     this.stopped = false;
+    this.compat = false;
     this.steps = 0;
+    this.zoomsInARow = 0;
+    this.lastZoom = null;
     this.lastShot = null;
     this.failed = null;
   }
 
   async start(goal) {
     const shot = await this.capture();
+    const memo = this.memories.length
+      ? `\n\nThings you remember about this person from earlier sessions:\n${this.memories.map((m) => `- ${m}`).join('\n')}`
+      : '';
     return this._send(
       [
         imageBlock(shot),
         {
           type: 'text',
-          text: `This screenshot is ${shot.width}x${shot.height} pixels.\nWhat the person wants to do, in their words: "${goal}"`,
+          text: `This screenshot is ${shot.width}x${shot.height} pixels.${memo}\n\nWhat the person wants to do, in their words: "${goal}"`,
         },
       ],
       shot,
@@ -161,13 +189,13 @@ class GuideSession extends EventEmitter {
     }
   }
 
-  async _send(content, shot) {
+  async _send(content, shot, info = {}) {
     if (this.busy || this.stopped) return;
     this.busy = true;
     this.pending = null;
     this.lastShot = shot;
     this.messages.push({ role: 'user', content });
-    this.emit('thinking');
+    this.emit('thinking', info);
 
     let response;
     try {
@@ -184,12 +212,16 @@ class GuideSession extends EventEmitter {
 
     // Append the full content unchanged (thinking blocks included) — history stays append-only.
     this.messages.push({ role: 'assistant', content: response.content });
-    this._handle(response, shot);
+    await this._handle(response, shot);
   }
 
-  _handle(response, shot) {
+  async _handle(response, shot) {
     if (response.stop_reason === 'refusal') {
-      this.emit('finish', { say: "I'm sorry, I can't help with that one. Is there something else we can do?", success: false });
+      this.emit('finish', {
+        say: "I'm sorry, I can't help with that one. Is there something else we can do?",
+        success: false,
+        remember: [],
+      });
       return;
     }
 
@@ -208,6 +240,11 @@ class GuideSession extends EventEmitter {
 
     const input = tool.input || {};
     this.pending = { id: tool.id, name: tool.name, input, shot };
+    if (tool.name === 'zoom_in') {
+      await this._zoomIn(input, shot);
+      return;
+    }
+    this.zoomsInARow = 0;
 
     switch (tool.name) {
       case 'ask_user':
@@ -218,10 +255,14 @@ class GuideSession extends EventEmitter {
         break;
       case 'point': {
         this.steps++;
-        const image = {
-          x: clamp(Math.round(input.x), 0, shot.width - 1),
-          y: clamp(Math.round(input.y), 0, shot.height - 1),
-        };
+        let { x, y } = input;
+        if (input.from_zoom && this.lastZoom) {
+          const z = this.lastZoom;
+          x = z.region.x + (x * z.region.width) / z.width;
+          y = z.region.y + (y * z.region.height) / z.height;
+        }
+        this.lastZoom = null;
+        const image = { x: clamp(Math.round(x), 0, shot.width - 1), y: clamp(Math.round(y), 0, shot.height - 1) };
         this.emit('point', {
           step: this.steps,
           say: input.say,
@@ -239,12 +280,48 @@ class GuideSession extends EventEmitter {
         this.emit('keys', { step: this.steps, say: input.say, keys: input.keys || [] });
         break;
       case 'finish':
-        this.emit('finish', { say: input.say, success: !!input.success });
+        this.emit('finish', {
+          say: input.say,
+          success: !!input.success,
+          remember: Array.isArray(input.remember)
+            ? input.remember.filter((m) => typeof m === 'string' && m.trim()).slice(0, 5)
+            : [],
+        });
         break;
       default:
         this.emit('error', { kind: 'unknown', message: "I got a bit mixed up. Let's try that again." });
     }
   }
+
+  // Claude asked for a closer look: answer immediately with a magnified crop (no action needed
+  // from the person), capped so it can't loop.
+  async _zoomIn(input, shot) {
+    this.zoomsInARow++;
+    const region = zoomRegion(input, shot);
+    let content;
+    if (!this.zoom || this.zoomsInARow > MAX_ZOOMS_IN_A_ROW) {
+      this.lastZoom = null;
+      content = [{ type: 'text', text: 'Please point now, using the full screenshot.' }];
+    } else {
+      try {
+        const z = await this.zoom(region, shot);
+        this.lastZoom = { region, width: z.width, height: z.height };
+        content = [
+          {
+            type: 'text',
+            text: `Magnified view of the area at (${region.x}, ${region.y}), size ${region.width}x${region.height} in the full screenshot. This image is ${z.width}x${z.height}. To point at something here, use its x,y in this image and set from_zoom to true.`,
+          },
+          imageBlock(z),
+        ];
+      } catch {
+        this.lastZoom = null;
+        content = [{ type: 'text', text: "Couldn't zoom just now. Please point using the full screenshot." }];
+      }
+    }
+    if (this.stopped) return;
+    const toolUseId = this.pending.id;
+    await this._send([{ type: 'tool_result', tool_use_id: toolUseId, content }], shot, { closer: true });
+  }
 }
 
-module.exports = { GuideSession, describeObservation, classifyError, DEFAULT_MODEL };
+module.exports = { GuideSession, describeObservation, classifyError, zoomRegion, DEFAULT_MODEL };

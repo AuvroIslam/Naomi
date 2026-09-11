@@ -2,28 +2,32 @@ const path = require('node:path');
 require('dotenv').config({ path: path.join(__dirname, '..', '..', '.env'), quiet: true });
 
 const { EventEmitter } = require('node:events');
-const { app, BrowserWindow, ipcMain, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, screen, globalShortcut } = require('electron');
 const AnthropicModule = require('@anthropic-ai/sdk');
 const settings = require('./settings');
+const { createMemory } = require('./memory');
 const { GuideSession, DEFAULT_MODEL } = require('./guide');
 const { ActionWatcher } = require('./watcher');
-const { captureForClaude, captureSignature, primaryDisplay } = require('./capture');
+const { captureForClaude, captureRegion, captureSignature, primaryDisplay } = require('./capture');
 const { pointInRect } = require('./geometry');
 
 const Anthropic = AnthropicModule.default || AnthropicModule;
 const PANEL_W = 420;
 const PANEL_H = 680;
 const MARGIN = 16;
+const SUMMON_KEY = 'CommandOrControl+Alt+N';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 let panel;
 let overlay;
+let memory;
 let session = null;
 let watcher;
 let hook = null;
 let hookKeys = null;
 let panelSide = 'right';
 let pointerAt = null; // screen DIP point where the dot currently rests
+let lastPoint = null; // last pointer message, for "show me again"
 let lastState = { phase: 'home' };
 
 // ---------- windows ----------
@@ -115,6 +119,10 @@ function sendFeedback(fb) {
   if (panel && !panel.isDestroyed()) panel.webContents.send('naomi:feedback', fb);
 }
 
+function prefsForRenderer() {
+  return { ...settings.getPrefs(), memoryCount: memory.list().length, summonKey: 'Ctrl + Alt + N' };
+}
+
 // If Naomi points at something under her own panel, she scoots to the other side.
 function keepPanelClear(pt) {
   if (!panel || !pointInRect(pt, panel.getBounds(), 60)) return;
@@ -125,22 +133,41 @@ function keepPanelClear(pt) {
 // Where the dot "comes from" when it first appears: Naomi's face in the panel header.
 function avatarPoint() {
   const b = panel.getBounds();
-  return { x: b.x + 52, y: b.y + 52 };
+  return { x: b.x + 46, y: b.y + 46 };
+}
+
+function summon() {
+  if (!panel || panel.isDestroyed()) return;
+  if (panel.isMinimized()) panel.restore();
+  panel.show();
+  panel.focus();
 }
 
 // ---------- seeing the screen ----------
 
-async function captureClean() {
+// Hide the pointer for a moment so Claude sees the screen, not Naomi's dot.
+async function withOverlayHidden(fn) {
   const hide = overlay && !overlay.isDestroyed();
   if (hide) {
     overlay.setOpacity(0);
     await sleep(80);
   }
   try {
-    return await captureForClaude({ maskRects: [panel.getBounds()] });
+    return await fn();
   } finally {
     if (hide) overlay.setOpacity(1);
   }
+}
+
+function captureClean() {
+  return withOverlayHidden(() => captureForClaude({ maskRects: [panel.getBounds()] }));
+}
+
+function captureZoom(region, shot) {
+  const a = shot.toScreen({ x: region.x, y: region.y });
+  const b = shot.toScreen({ x: region.x + region.width, y: region.y + region.height });
+  const rect = { x: a.x, y: a.y, width: b.x - a.x, height: b.y - a.y };
+  return withOverlayHidden(() => captureRegion(rect, { maskRects: [panel.getBounds()] }));
 }
 
 function signature() {
@@ -174,12 +201,17 @@ function makeClient() {
   return apiKey ? new Anthropic({ apiKey }) : null;
 }
 
+function hidePointer() {
+  pointerAt = null;
+  lastPoint = null;
+  overlaySend({ type: 'hide' });
+}
+
 function endSession() {
   watcher.stop();
   if (session) session.stop();
   session = null;
-  pointerAt = null;
-  overlaySend({ type: 'hide' });
+  hidePointer();
 }
 
 function startSession(goal) {
@@ -193,51 +225,54 @@ function startSession(goal) {
   const s = new GuideSession({
     client,
     capture: captureClean,
+    zoom: captureZoom,
+    memories: memory.list(),
     model: process.env.NAOMI_MODEL || DEFAULT_MODEL,
     effort: process.env.NAOMI_EFFORT || prefs.effort,
   });
   session = s;
   const live = (fn) => (...args) => session === s && fn(...args);
 
-  s.on('thinking', live(() => {
+  s.on('thinking', live((info = {}) => {
     watcher.stop();
     overlaySend({ type: 'thinking' });
-    sendState({ phase: 'thinking', goal, after: lastState.phase });
+    const after = lastState.phase === 'thinking' ? lastState.after : lastState.phase;
+    sendState({ phase: 'thinking', goal, after, closer: !!info.closer });
   }));
   s.on('ask', live((q) => {
-    pointerAt = null;
-    overlaySend({ type: 'hide' });
+    hidePointer();
     sendState({ phase: 'ask', goal, question: q.question, choices: q.choices });
   }));
   s.on('point', live((p) => {
     keepPanelClear(p.screen);
     pointerAt = p.screen;
-    overlaySend({
+    lastPoint = {
       type: 'point',
       ...toOverlay(p.screen),
-      from: toOverlay(avatarPoint()),
       bubble: p.bubble,
       action: p.action,
       typeText: p.typeText,
       spotlight: settings.getPrefs().spotlight,
-    });
+    };
+    overlaySend({ ...lastPoint, from: toOverlay(avatarPoint()) });
     sendState({ phase: 'point', goal, step: p.step, say: p.say, action: p.action, typeText: p.typeText, bubble: p.bubble });
     watcher.watch({ action: p.action, screen: p.screen });
   }));
   s.on('keys', live((k) => {
-    pointerAt = null;
-    overlaySend({ type: 'hide' });
+    hidePointer();
     sendState({ phase: 'keys', goal, step: k.step, say: k.say, keys: k.keys });
     watcher.watch({ action: 'keys' });
   }));
   s.on('finish', live((f) => {
     watcher.stop();
     pointerAt = null;
+    lastPoint = null;
     overlaySend({ type: f.success ? 'celebrate' : 'hide' });
-    sendState({ phase: 'finish', goal, say: f.say, success: f.success });
+    const remembered = f.success ? memory.add(f.remember) : [];
+    sendState({ phase: 'finish', goal, say: f.say, success: f.success, remembered });
   }));
   s.on('error', live((e) => {
-    overlaySend({ type: 'hide' });
+    hidePointer();
     sendState({ phase: e.kind === 'auth' ? 'setup' : 'error', goal, say: e.message, errorKind: e.kind });
   }));
 
@@ -284,20 +319,28 @@ function wireIpc() {
     return session.report({ kind: 'stuck' });
   });
   ipcMain.handle('naomi:retry', () => (session ? session.retry() : undefined));
+  // "Show me again": the dot travels from Naomi to the target once more.
+  ipcMain.handle('naomi:replay', () => {
+    if (lastPoint) overlaySend({ ...lastPoint, from: toOverlay(avatarPoint()), replay: true });
+  });
   ipcMain.handle('naomi:stop', () => {
     endSession();
     sendState({ phase: 'home' });
   });
   ipcMain.handle('naomi:state:get', () => lastState);
-  ipcMain.handle('naomi:prefs:get', () => settings.getPrefs());
+  ipcMain.handle('naomi:prefs:get', () => prefsForRenderer());
   ipcMain.handle('naomi:prefs:set', (_e, patch) => {
     const prefs = settings.setPrefs(patch || {});
     overlaySend({ type: 'prefs', spotlight: prefs.spotlight });
-    return prefs;
+    return prefsForRenderer();
   });
   ipcMain.handle('naomi:key:set', (_e, key) => {
     settings.setApiKey(String(key || ''));
-    return settings.getPrefs();
+    return prefsForRenderer();
+  });
+  ipcMain.handle('naomi:memory:clear', () => {
+    memory.clear();
+    return prefsForRenderer();
   });
   // Windows' built-in voice typing (Win + H) dictates straight into Naomi's text box.
   ipcMain.handle('naomi:voice-type', () => {
@@ -316,22 +359,20 @@ function wireIpc() {
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
-  app.on('second-instance', () => {
-    if (panel) {
-      if (panel.isMinimized()) panel.restore();
-      panel.focus();
-    }
-  });
+  app.on('second-instance', summon);
 
   app.whenReady().then(() => {
+    memory = createMemory(path.join(app.getPath('userData'), 'memory.json'));
     const input = startInputHook();
     wireWatcher(input);
     wireIpc();
     createOverlay();
     createPanel();
+    globalShortcut.register(SUMMON_KEY, summon);
   });
 
   app.on('will-quit', () => {
+    globalShortcut.unregisterAll();
     if (hook) hook.stop();
   });
   app.on('window-all-closed', () => app.quit());
