@@ -12,14 +12,17 @@ function createPracticeWindow(bounds) {
     icon: path.join(__dirname, '..', '..', 'assets', 'icon.png'),
     webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true },
   });
-  // Stay in front while practising (Windows won't let a background app steal focus),
-  // but below Naomi's panel and pointer.
-  win.setAlwaysOnTop(true, 'floating');
+  // Come to the front when it opens (Windows won't let a background app steal focus without a
+  // brief always-on-top), then become a normal window so it can never cover Naomi's island.
+  win.setAlwaysOnTop(true);
   win.loadFile(path.join(__dirname, '..', 'renderer', 'practice', 'index.html'));
   win.once('ready-to-show', () => {
     win.show();
     win.moveTop();
     win.focus();
+    setTimeout(() => {
+      if (!win.isDestroyed()) win.setAlwaysOnTop(false);
+    }, 800);
   });
   return win;
 }

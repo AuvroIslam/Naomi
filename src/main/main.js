@@ -130,9 +130,9 @@ function createOverlay() {
 }
 
 // On Windows every always-on-top window shares one band and the last one raised wins, so
-// re-stack ours before pointing: practice window < island < pointer overlay.
+// re-stack ours before pointing: island < pointer overlay. (The practice window is a normal
+// window, so it always stays below both.)
 function restack() {
-  if (practiceWin && !practiceWin.isDestroyed()) practiceWin.setAlwaysOnTop(true, 'floating');
   if (island && !island.isDestroyed()) {
     island.setAlwaysOnTop(true, 'pop-up-menu');
     island.moveTop();
