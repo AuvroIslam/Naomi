@@ -42,7 +42,7 @@ const toolCall = (name, args, id = 'call_1') => ({
 
 test('provider order is OpenAI -> DeepSeek -> Google -> Claude, and all can see', () => {
   assert.deepEqual(PROVIDERS.map((p) => p.id), ['openai', 'deepseek', 'google', 'anthropic']);
-  assert.deepEqual(PROVIDERS.find((p) => p.id === 'google').models, ['gemini-3.6-flash', 'gemma-4-31b-it']);
+  assert.deepEqual(PROVIDERS.find((p) => p.id === 'google').models, ['gemini-3.6-flash']);
   assert.match(PROVIDERS.find((p) => p.id === 'deepseek').models[0], /vision/);
 });
 
@@ -114,12 +114,11 @@ test('each provider gets the right endpoint, model, and parameters', async () =>
     'OpenAI (gpt-5.4-mini)',
     'DeepSeek (deepseek-v4-flash-vision-exp)',
     'Google Gemini (gemini-3.6-flash)',
-    'Google Gemini (gemma-4-31b-it)',
   ]);
   const params = { system: 'S', tools: TOOLS, messages: [{ role: 'user', content: [img('A'), { type: 'text', text: 'hi' }] }] };
   for (const l of links) await l.client.beta.messages.create(params);
 
-  const [oa, ds, gm, gemma] = requests;
+  const [oa, ds, gm] = requests;
   assert.equal(oa.baseURL, undefined);
   assert.equal(oa.body.model, 'gpt-5.4-mini');
   assert.equal(oa.body.parallel_tool_calls, false);
@@ -134,14 +133,15 @@ test('each provider gets the right endpoint, model, and parameters', async () =>
   assert.match(gm.baseURL, /generativelanguage\.googleapis\.com\/v1beta\/openai/);
   assert.equal(gm.body.model, 'gemini-3.6-flash');
   assert.equal(gm.body.reasoning_effort, 'low');
-  assert.equal(gemma.body.model, 'gemma-4-31b-it');
-  assert.equal(gemma.body.reasoning_effort, undefined, 'Gemma rejects thinking settings');
 });
 
-test('model names can be overridden from the environment', () => {
-  const { FakeOpenAI } = fakeOpenAI(() => null);
-  const links = buildLinks({ google: 'k' }, { OpenAIClass: FakeOpenAI, env: { NAOMI_GOOGLE_MODEL: 'gemini-3.8-flash' } });
-  assert.deepEqual(links.map((l) => l.name), ['Google Gemini (gemini-3.8-flash)']);
+test('model names can be overridden from the environment; Gemma gets no thinking settings', async () => {
+  const { FakeOpenAI, requests } = fakeOpenAI(() => toolCall('ask_user', { question: 'Q', choices: [] }));
+  const links = buildLinks({ google: 'k' }, { OpenAIClass: FakeOpenAI, env: { NAOMI_GOOGLE_MODEL: 'gemini-3.8-flash,gemma-4-31b-it' } });
+  assert.deepEqual(links.map((l) => l.name), ['Google Gemini (gemini-3.8-flash)', 'Google Gemini (gemma-4-31b-it)']);
+  for (const l of links) await l.client.beta.messages.create({ system: 'S', tools: TOOLS, messages: [{ role: 'user', content: 'hi' }] });
+  assert.equal(requests[0].body.reasoning_effort, 'low');
+  assert.equal(requests[1].body.reasoning_effort, undefined, 'Gemma rejects thinking settings');
 });
 
 test('the chain falls through unavailable providers, then sticks with the one that works', async () => {

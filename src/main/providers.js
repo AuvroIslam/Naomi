@@ -21,7 +21,7 @@ const PROVIDERS = [
     id: 'google',
     label: 'Google Gemini',
     env: ['GEMINI_API_KEY', 'GOOGLE_API_KEY'],
-    models: ['gemini-3.6-flash', 'gemma-4-31b-it'], // both on the free tier; Flash points more precisely
+    models: ['gemini-3.6-flash'], // free tier, sees screenshots well, points precisely
     baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
     extra: { reasoning_effort: 'low' },
   },

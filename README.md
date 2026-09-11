@@ -89,10 +89,10 @@ Naomi tries every provider you've given a key for, **in this order**, and quietl
 |---|---|---|---|---|
 | 1 | OpenAI | `gpt-5.4-mini` | `OPENAI_API_KEY` | paid |
 | 2 | DeepSeek | `deepseek-v4-flash-vision-exp` (DeepSeek's vision model, experimental) | `DEEPSEEK_API_KEY` | paid, cheap |
-| 3 | Google | `gemini-3.6-flash`, then `gemma-4-31b-it` | `GEMINI_API_KEY` | **free tier** ([get a key](https://aistudio.google.com/apikey)) |
+| 3 | Google | `gemini-3.6-flash` | `GEMINI_API_KEY` | **free tier** ([get a key](https://aistudio.google.com/apikey)) |
 | 4 | Anthropic | `claude-opus-5` | `ANTHROPIC_API_KEY` | paid |
 
-**No money? Use Google.** Gemini Flash is free, sees screenshots well, and is the best free option for precise pointing (Gemma 4 is the backup on the same free key). Models can be swapped with `NAOMI_OPENAI_MODEL`, `NAOMI_DEEPSEEK_MODEL`, `NAOMI_GOOGLE_MODEL`.
+**No money? Use Google.** Gemini Flash is free, sees screenshots well, and is the best free option for precise pointing. Any key can have a spare that takes over if the main one fails or hits its free limit — add `_FALLBACK` to the name (e.g. `GEMINI_API_KEY_FALLBACK`). Models can be swapped with `NAOMI_OPENAI_MODEL`, `NAOMI_DEEPSEEK_MODEL`, `NAOMI_GOOGLE_MODEL`.
 
 | Command | What it does |
 |---|---|

@@ -9,18 +9,22 @@ test('spare keys are read, in any letter case, main key first, no repeats', () =
   assert.deepEqual(allKeysFromEnv({ GEMINI_API_KEY_FALLBACK: 'only-spare' }), { google: ['only-spare'] });
 });
 
-test('Google tries Flash on both keys before falling back to Gemma', () => {
+test('Google tries Gemini Flash on the main key, then on the spare key', () => {
   class FakeOpenAI {
     constructor() {
       this.chat = { completions: { create: async () => ({}) } };
     }
   }
   const links = buildLinks({ google: ['g1', 'g2'] }, { OpenAIClass: FakeOpenAI, env: {} });
-  assert.deepEqual(links.map((l) => l.name), [
-    'Google Gemini (gemini-3.6-flash)',
-    'Google Gemini (gemini-3.6-flash, key 2)',
-    'Google Gemini (gemma-4-31b-it)',
-    'Google Gemini (gemma-4-31b-it, key 2)',
+  assert.deepEqual(links.map((l) => l.name), ['Google Gemini (gemini-3.6-flash)', 'Google Gemini (gemini-3.6-flash, key 2)']);
+
+  // With several models (via NAOMI_GOOGLE_MODEL), the better model is tried on every key first.
+  const both = buildLinks({ google: ['g1', 'g2'] }, { OpenAIClass: FakeOpenAI, env: { NAOMI_GOOGLE_MODEL: 'a,b' } });
+  assert.deepEqual(both.map((l) => l.name), [
+    'Google Gemini (a)',
+    'Google Gemini (a, key 2)',
+    'Google Gemini (b)',
+    'Google Gemini (b, key 2)',
   ]);
 });
 
