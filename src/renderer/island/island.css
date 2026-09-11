@@ -384,6 +384,43 @@ body.bottom .content {
 .btn.danger {
   color: var(--red);
 }
+/* Quit: a thin drawn cross in a small round button */
+.close {
+  position: relative;
+  width: 30px;
+  height: 30px;
+  margin: 2px 0 0 4px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--fill);
+  cursor: pointer;
+  flex: none;
+}
+.close::before,
+.close::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 12px;
+  height: 1.5px;
+  border-radius: 1px;
+  background: var(--text-2);
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+.close::after {
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
+.close:hover {
+  background: var(--red);
+}
+.close:hover::before,
+.close:hover::after {
+  background: #fff;
+}
+.close:active {
+  transform: scale(0.94);
+}
 .btn.pulse {
   animation: glow 1.2s ease-in-out 4;
 }

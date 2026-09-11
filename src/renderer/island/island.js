@@ -170,7 +170,7 @@ const renderers = {
           { class: 'header-actions' },
           btn('Settings', openSettings, 'quiet'),
           btn('Hide', collapse, 'quiet'),
-          btn('Quit Naomi', () => window.naomi.windowAction('quit'), 'quiet danger'),
+          h('button', { class: 'close', title: 'Quit Naomi', 'aria-label': 'Quit Naomi', onclick: () => window.naomi.windowAction('quit') }),
         ),
       ),
       inputRow('Tell me in your own words'),
