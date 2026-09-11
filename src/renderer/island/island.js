@@ -406,7 +406,10 @@ function closeSettings() {
   render(state);
 }
 
-island.addEventListener('click', () => {
+island.addEventListener('click', (e) => {
+  // Clicking the small pill opens it. Clicks on buttons are ignored: "Hide" collapses the island
+  // and its click then bubbles here, which would open it straight back up.
+  if (e.target.closest('button')) return;
   if (state.phase === 'home' && collapsed) expand();
 });
 
