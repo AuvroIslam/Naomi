@@ -225,6 +225,75 @@ body {
   }
 }
 
+/* Target on the taskbar (or another screen edge Windows keeps on top): the dot waits at the
+   edge and a bouncing arrow points the rest of the way. */
+.arrow {
+  position: absolute;
+  width: 0;
+  height: 0;
+  display: none;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.45));
+}
+#pointer[data-edge='down'] .arrow {
+  display: block;
+  left: -13px;
+  top: 22px;
+  border-left: 13px solid transparent;
+  border-right: 13px solid transparent;
+  border-top: 18px solid var(--coral);
+  animation: arrow-down 0.8s ease-in-out infinite;
+}
+#pointer[data-edge='up'] .arrow {
+  display: block;
+  left: -13px;
+  top: -40px;
+  border-left: 13px solid transparent;
+  border-right: 13px solid transparent;
+  border-bottom: 18px solid var(--coral);
+  animation: arrow-up 0.8s ease-in-out infinite;
+}
+#pointer[data-edge='left'] .arrow {
+  display: block;
+  left: -40px;
+  top: -13px;
+  border-top: 13px solid transparent;
+  border-bottom: 13px solid transparent;
+  border-right: 18px solid var(--coral);
+  animation: arrow-left 0.8s ease-in-out infinite;
+}
+#pointer[data-edge='right'] .arrow {
+  display: block;
+  left: 22px;
+  top: -13px;
+  border-top: 13px solid transparent;
+  border-bottom: 13px solid transparent;
+  border-left: 18px solid var(--coral);
+  animation: arrow-right 0.8s ease-in-out infinite;
+}
+#pointer.hit .arrow {
+  display: none;
+}
+@keyframes arrow-down {
+  50% {
+    transform: translateY(6px);
+  }
+}
+@keyframes arrow-up {
+  50% {
+    transform: translateY(-6px);
+  }
+}
+@keyframes arrow-left {
+  50% {
+    transform: translateX(-6px);
+  }
+}
+@keyframes arrow-right {
+  50% {
+    transform: translateX(6px);
+  }
+}
+
 #confetti {
   position: fixed;
   inset: 0;

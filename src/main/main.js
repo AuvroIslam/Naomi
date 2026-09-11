@@ -113,6 +113,15 @@ function createOverlay() {
   });
   overlay.setIgnoreMouseEvents(true);
   overlay.setAlwaysOnTop(true, 'screen-saver');
+  // The Windows taskbar re-raises itself above other always-on-top windows (e.g. after it's
+  // clicked), which would hide the dot exactly when pointing at a taskbar icon. While pointing,
+  // keep reclaiming the top spot.
+  const keepOnTop = setInterval(() => {
+    if (!lastPoint || !overlay || overlay.isDestroyed()) return;
+    overlay.setAlwaysOnTop(true, 'screen-saver');
+    overlay.moveTop();
+  }, 600);
+  overlay.on('closed', () => clearInterval(keepOnTop));
   overlay.loadFile(path.join(__dirname, '..', 'renderer', 'overlay', 'index.html'));
   overlay.once('ready-to-show', () => {
     overlay.showInactive();
@@ -336,10 +345,15 @@ function startSession(goal, { client = makeClient(), practice = false } = {}) {
   }));
   s.on('point', live((p) => {
     keepIslandClear(p.screen);
-    pointerAt = p.screen;
+    // Taskbar targets: the dot waits just above the taskbar and an arrow points the rest of the
+    // way (Windows draws the taskbar over every app). Clicks are still judged on the real target.
+    const { pointerPlacement } = require('./geometry');
+    const spot = pointerPlacement(p.screen, primaryDisplay().workArea);
+    pointerAt = spot;
     lastPoint = {
       type: 'point',
-      ...toOverlay(p.screen),
+      ...toOverlay(spot),
+      edge: spot.edge,
       bubble: p.bubble,
       action: p.action,
       typeText: p.typeText,

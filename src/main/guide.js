@@ -233,10 +233,20 @@ class GuideSession extends EventEmitter {
       .trim();
 
     if (!tool) {
-      // Plain words with no tool: treat it as an open question to the person.
+      // Some models answer in plain words ("Done — Edge is open.") instead of calling a tool.
+      // Ask once for a proper tool call; if it still talks, treat it as an open question.
+      if (!this.nudgedForTool) {
+        this.nudgedForTool = true;
+        await this._send(
+          [{ type: 'text', text: 'Please reply by calling exactly one of your tools: ask_user, point, zoom_in, show_keys, or finish.' }],
+          shot,
+        );
+        return;
+      }
       this.emit('ask', { question: text || 'Could you tell me a little more?', choices: [] });
       return;
     }
+    this.nudgedForTool = false;
 
     const input = tool.input || {};
     this.pending = { id: tool.id, name: tool.name, input, shot };

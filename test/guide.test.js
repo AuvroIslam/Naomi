@@ -143,8 +143,23 @@ test('refusal ends kindly; plain text without a tool becomes a question', async 
   await refused.start('x');
   assert.equal((await fin).success, false);
 
+  // Plain text first gets one nudge to use a tool; a tool call then goes through normally.
+  const nudged = fakeClient([
+    { stop_reason: 'end_turn', content: [{ type: 'text', text: 'Done — Edge is open.' }] },
+    { stop_reason: 'tool_use', content: [{ type: 'tool_use', id: 'f1', name: 'ask_user', input: { question: 'Is Edge open?', choices: ['Yes'] } }] },
+  ]);
+  const s = new GuideSession({ client: nudged, capture: async () => fakeShot() });
+  const askedAfterNudge = once(s, 'ask');
+  await s.start('open edge');
+  assert.equal((await askedAfterNudge).question, 'Is Edge open?');
+  assert.match(nudged.calls[1].messages.at(-1).content[0].text, /calling exactly one of your tools/);
+
+  // If it keeps talking after the nudge, the words become an open question.
   const texty = new GuideSession({
-    client: fakeClient([{ stop_reason: 'end_turn', content: [{ type: 'text', text: 'Which app do you use?' }] }]),
+    client: fakeClient([
+      { stop_reason: 'end_turn', content: [{ type: 'text', text: 'Hmm.' }] },
+      { stop_reason: 'end_turn', content: [{ type: 'text', text: 'Which app do you use?' }] },
+    ]),
     capture: async () => fakeShot(),
   });
   const asked = once(texty, 'ask');

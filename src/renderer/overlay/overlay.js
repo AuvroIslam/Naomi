@@ -63,6 +63,7 @@ function point(msg) {
   clearTimeout(hideTimer);
   pointer.className = '';
   bubble.className = '';
+  pointer.dataset.edge = msg.edge || ''; // arrow toward a target Windows keeps on top (taskbar)
   // First appearance (or "show me again"): travel out from Naomi's face to the target.
   if (!visible || !pos || msg.replay) jump(msg.from ? msg.from.x : msg.x, msg.from ? msg.from.y : msg.y);
 
