@@ -28,11 +28,11 @@ const WIDTH = { idle: 250, compact: 480, expanded: 560 };
 const SIZE = { home: 'expanded', thinking: 'compact', ask: 'expanded', point: 'compact', keys: 'compact', finish: 'expanded', error: 'expanded', setup: 'expanded' };
 const BANGLA = /[ঀ-৿]/;
 
-// ---------- click-through: only the island itself takes the mouse ----------
+// ---------- hover tracking ----------
+// The main process decides click-through from the cursor position; here we only remember
+// whether the person is hovering (so we don't auto-collapse under their mouse).
 function setInteractive(on) {
-  if (on === interactive) return;
   interactive = on;
-  window.naomi.setInteractive(on);
 }
 document.addEventListener('mousemove', (e) => setInteractive(island.contains(e.target)));
 document.addEventListener('mouseleave', () => setInteractive(false));

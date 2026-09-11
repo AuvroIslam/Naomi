@@ -383,19 +383,87 @@
         transform: translate(-50%, 0);
       }
 
-      /* mini Naomi panel */
+      /* mini Naomi island (like a phone's Dynamic Island, at the top of the screen) */
       .npanel {
         position: absolute;
-        right: 26px;
-        top: 28px;
-        width: 290px;
-        height: 520px;
-        background: var(--cream);
-        border-radius: 22px;
-        box-shadow: 0 12px 30px rgba(29, 33, 64, 0.22);
+        left: 50%;
+        top: 14px;
+        transform: translateX(-50%);
+        width: 540px;
+        background: #0f1117;
+        color: #f5f6fa;
+        border-radius: 26px;
+        box-shadow: 0 14px 34px rgba(0, 0, 0, 0.35);
         display: flex;
         flex-direction: column;
         overflow: hidden;
+        z-index: 4;
+      }
+      .stage .browser {
+        left: 110px;
+        top: 104px;
+        width: 780px;
+        height: 460px;
+      }
+      .npanel .nhead {
+        background: transparent;
+        border: 0;
+        padding: 10px 16px 4px;
+      }
+      .npanel .nhead svg {
+        width: 30px;
+        height: 30px;
+      }
+      .npanel .nhead b {
+        font-size: 15px;
+        color: #fff;
+      }
+      .npanel .nhead small {
+        color: #a3a8bb;
+      }
+      .npanel .msgs {
+        padding: 2px 16px 12px;
+        gap: 6px;
+        justify-content: flex-start;
+      }
+      .npanel .msgs > *:not(:nth-last-child(-n + 2)) {
+        display: none;
+      }
+      .npanel .msgs .m {
+        max-width: 100%;
+        padding: 0;
+        border: 0;
+        background: transparent;
+      }
+      .npanel .m.naomi,
+      .npanel .m.step {
+        color: #fff;
+        font-size: 17px;
+      }
+      .npanel .m.step::before {
+        content: '● ';
+        color: var(--coral);
+      }
+      .npanel .m.you {
+        align-self: flex-start;
+        color: #a3a8bb;
+        font-size: 13px;
+        font-weight: 600;
+      }
+      .npanel .m.you::before {
+        content: 'You: ';
+      }
+      .npanel .m.done {
+        color: #6fe0ac;
+      }
+      .npanel .chip {
+        background: #1b1e27;
+        border-color: #2e3342;
+        color: #fff;
+      }
+      .npanel .chip.picked {
+        background: rgba(255, 106, 77, 0.2);
+        border-color: var(--coral);
       }
       .nhead {
         display: flex;

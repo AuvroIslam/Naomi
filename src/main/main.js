@@ -386,10 +386,7 @@ function wireWatcher(input) {
 // ---------- IPC ----------
 
 function wireIpc() {
-  // Island plumbing: take the mouse only over the pill, and remember where the pill is.
-  ipcMain.on('naomi:interactive', (_e, on) => {
-    if (island && !island.isDestroyed()) island.setIgnoreMouseEvents(!on, { forward: true });
-  });
+  // Island plumbing: remember where the pill is (click-through is decided from the cursor).
   ipcMain.on('naomi:island-rect', (_e, r) => {
     if (!island || island.isDestroyed() || !r) return;
     const b = island.getBounds();

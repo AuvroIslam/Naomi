@@ -45,14 +45,15 @@ It never controls your computer. **You** do every click. Naomi just shows you wh
 | 🛡️ **Watches out for you** | Gently warns about scams — gift-card requests, fake virus popups, strangers asking for remote access. |
 | 🗣️ **Speaks and listens** | Reads every instruction aloud; the 🎤 button opens Windows voice typing. Answers in your language, including Bangla. |
 | 🤝 **Designed for patience** | Big text, big buttons, "Show me again", "I'm stuck", no jargon, no judgement. Never says "wrong". |
-| 🫥 **Stays out of the way** | If Naomi needs to point at something under her own window, she scoots to the other side of the screen. |
+| 🏝️ **A calm little island** | Naomi lives in a small pill at the top of your screen, like a phone's Dynamic Island. It grows only when she needs to ask you something, and shrinks back while the dot does the pointing. |
+| 🫥 **Stays out of the way** | If Naomi needs to point at something under her island, it glides to the bottom of the screen. Everywhere else, clicks pass straight through to your apps. |
 | 🎓 **Safe practice mode** | A pretend email app where first-timers can practise with Naomi — nothing is really sent, and no setup or API key is needed. |
 
 ## How it works
 
 ```mermaid
 flowchart LR
-    U["Person: 'send an email<br/>to my granddaughter'"] --> P[Companion panel]
+    U["Person: 'send an email<br/>to my granddaughter'"] --> P[Naomi island]
     P --> G[Guide session]
     G -- "screenshot + goal" --> C["Claude (vision + tools)"]
     C -- "ask_user / point / zoom_in /<br/>show_keys / finish" --> G
@@ -62,8 +63,8 @@ flowchart LR
     W -- "hit / miss / typed / changed<br/>+ fresh screenshot" --> G
 ```
 
-- **Electron** app with two windows: a companion **panel** and a full-screen, click-through **overlay** that draws the pointer, spotlight, and speech bubble above every app.
-- **Claude** (`claude-opus-5`) sees a screenshot (Naomi's own window is masked out) and replies with exactly one tool call per turn: `ask_user`, `point`, `zoom_in`, `show_keys`, or `finish`. Coordinates are mapped from screenshot pixels to real screen positions, DPI-aware.
+- **Electron** app with two windows: the Dynamic-Island-style **Naomi island** (a transparent window where only the pill takes clicks) and a full-screen, click-through **overlay** that draws the pointer, spotlight, and speech bubble above every app.
+- **Claude** (`claude-opus-5`) sees a screenshot (Naomi hides herself for a blink so Claude sees only your screen) and replies with exactly one tool call per turn: `ask_user`, `point`, `zoom_in`, `show_keys`, or `finish`. Coordinates are mapped from screenshot pixels to real screen positions, DPI-aware.
 - The **watcher** listens to global mouse/keyboard events (no keystroke contents are recorded) and samples tiny screen fingerprints to know when an action happened and when the screen has settled — then Naomi takes a fresh look and decides the next step.
 - Conversation history is append-only with prompt caching, so each step stays fast.
 

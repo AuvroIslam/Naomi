@@ -19,7 +19,6 @@ contextBridge.exposeInMainWorld('naomi', {
   voiceType: () => invoke('naomi:voice-type'),
   windowAction: (action) => invoke('naomi:window', action),
   // island window plumbing
-  setInteractive: (on) => ipcRenderer.send('naomi:interactive', !!on),
   reportRect: (rect) => ipcRenderer.send('naomi:island-rect', rect),
   onState: (cb) => ipcRenderer.on('naomi:state', (_e, state) => cb(state)),
   onFeedback: (cb) => ipcRenderer.on('naomi:feedback', (_e, fb) => cb(fb)),
