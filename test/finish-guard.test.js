@@ -1,5 +1,6 @@
-// A real model once looked at an unrelated dialog and declared "your download is shown — done!"
-// before the person had done anything. Naomi must push back instead of celebrating.
+// Real models have finished a task before the person did anything: once with a false
+// "your download is shown — done!", once by giving up with "Open File Explorer and I'll help".
+// Naomi must push back and guide instead.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { GuideSession } = require('../src/main/guide');
@@ -39,7 +40,30 @@ test('a first-turn "success" is sent back once, and the session continues', asyn
   assert.equal(pushBack.is_error, true);
 });
 
-test('a later success, or an honest first-turn "can\'t do it", goes through', async () => {
+test('a first-turn give-up ("open it yourself") is also sent back, and Naomi points instead', async () => {
+  const client = scripted([
+    tool('f1', 'finish', { say: "Open File Explorer and I'll help you find it.", success: false, remember: [] }),
+    tool('p1', 'point', {
+      say: 'Click the yellow folder to open File Explorer.',
+      bubble: 'Click here',
+      action: 'click',
+      x: 400,
+      y: 700,
+      from_zoom: false,
+      type_text: '',
+      target: 'File Explorer',
+    }),
+  ]);
+  const s = new GuideSession({ client, capture: async () => shot });
+  let finished = false;
+  s.on('finish', () => (finished = true));
+  const pointed = new Promise((r) => s.once('point', r));
+  await s.start('How do I find the file I just downloaded?');
+  assert.equal((await pointed).target, 'File Explorer');
+  assert.equal(finished, false);
+});
+
+test('a later finish goes straight through; a first-turn refusal goes through if the model insists', async () => {
   const later = scripted([
     tool('a1', 'ask_user', { question: 'Q?', choices: [] }),
     tool('f1', 'finish', { say: 'Done!', success: true, remember: [] }),
@@ -50,11 +74,17 @@ test('a later success, or an honest first-turn "can\'t do it", goes through', as
   await s1.reply('yes');
   assert.equal((await done).success, true);
 
-  const cannot = scripted([tool('f1', 'finish', { say: "I can't help with that.", success: false, remember: [] })]);
+  const cannot = scripted([
+    tool('f1', 'finish', { say: "I can't help with that.", success: false, remember: [] }),
+    tool('f2', 'finish', { say: "I'm sorry, I really can't help with that one.", success: false, remember: [] }),
+  ]);
   const s2 = new GuideSession({ client: cannot, capture: async () => shot });
   const refused = new Promise((r) => s2.once('finish', r));
   await s2.start('x');
-  assert.equal((await refused).success, false);
+  const f = await refused;
+  assert.equal(f.success, false);
+  assert.match(f.say, /really can't/);
+  assert.equal(cannot.calls.length, 2);
 });
 
 test('the push-back happens only once per session', async () => {

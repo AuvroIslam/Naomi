@@ -312,9 +312,10 @@ class GuideSession extends EventEmitter {
         this.emit('keys', { step: this.steps, say: input.say, keys: input.keys || [] });
         break;
       case 'finish': {
-        // A "success" before the person has done anything is a misread screen, not a finished task.
+        // Finishing before the person has done anything is almost always a misread screen: either
+        // a false "done", or giving up and telling them to do the step alone. Push back once.
         const firstTurn = this.messages.filter((m) => m.role === 'assistant').length <= 1;
-        if (input.success && firstTurn && !this.finishPushedBack) {
+        if (firstTurn && !this.finishPushedBack) {
           this.finishPushedBack = true;
           await this._send(
             [
