@@ -1,21 +1,27 @@
-// Renders Naomi's face to assets/icon.png (and a favicon for the website).
-// Run with: npx electron scripts/make-icon.js   (via `npm run icon`)
+// Renders Naomi's icon — a glowing orange orb, the same as her pointer — to assets/icon.png,
+// assets/icon.svg and the website favicon docs/icon.png.
+// Run with: npm run icon
 const fs = require('node:fs');
 const path = require('node:path');
 const { app, BrowserWindow } = require('electron');
 
 const SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="512" height="512">
   <defs>
-    <radialGradient id="face" cx="35%" cy="30%" r="80%">
-      <stop offset="0" stop-color="#ffb199"/><stop offset="0.6" stop-color="#ff6a4d"/><stop offset="1" stop-color="#e2482b"/>
+    <radialGradient id="orb" cx="34%" cy="28%" r="78%">
+      <stop offset="0" stop-color="#ffdcc8"/>
+      <stop offset="0.24" stop-color="#ff9c5e"/>
+      <stop offset="0.56" stop-color="#ff6b35"/>
+      <stop offset="1" stop-color="#d9420f"/>
+    </radialGradient>
+    <radialGradient id="shine" cx="36%" cy="24%" r="32%">
+      <stop offset="0" stop-color="#fff" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
     </radialGradient>
   </defs>
-  <circle cx="32" cy="32" r="30" fill="url(#face)"/>
-  <circle cx="18" cy="38" r="5" fill="#ff8f78" opacity="0.7"/>
-  <circle cx="46" cy="38" r="5" fill="#ff8f78" opacity="0.7"/>
-  <ellipse cx="23" cy="28" rx="3.6" ry="4.6" fill="#1d2140"/>
-  <ellipse cx="41" cy="28" rx="3.6" ry="4.6" fill="#1d2140"/>
-  <path d="M22 40 Q32 48 42 40" stroke="#1d2140" stroke-width="3.4" fill="none" stroke-linecap="round"/>
+  <circle cx="32" cy="32" r="29" fill="url(#orb)"/>
+  <circle cx="32" cy="32" r="29" fill="url(#shine)"/>
+  <rect x="20.2" y="22.2" width="7.6" height="12.2" rx="3.8" fill="#2a1206"/>
+  <rect x="36.2" y="22.2" width="7.6" height="12.2" rx="3.8" fill="#2a1206"/>
 </svg>`;
 
 const root = path.join(__dirname, '..');
@@ -34,10 +40,12 @@ app.whenReady().then(async () => {
   await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
   await new Promise((r) => setTimeout(r, 400));
   const image = await win.webContents.capturePage({ x: 0, y: 0, width: 512, height: 512 });
+  const png = image.resize({ width: 512, height: 512 }).toPNG();
 
   fs.mkdirSync(path.join(root, 'assets'), { recursive: true });
-  fs.writeFileSync(path.join(root, 'assets', 'icon.png'), image.resize({ width: 512, height: 512 }).toPNG());
+  fs.writeFileSync(path.join(root, 'assets', 'icon.png'), png);
   fs.writeFileSync(path.join(root, 'assets', 'icon.svg'), SVG);
-  console.log('wrote assets/icon.png and assets/icon.svg');
+  fs.writeFileSync(path.join(root, 'docs', 'icon.png'), png);
+  console.log('wrote assets/icon.png, assets/icon.svg, docs/icon.png');
   app.quit();
 });

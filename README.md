@@ -37,17 +37,17 @@ It never controls your computer. **You** do every click. Naomi just shows you wh
 
 | | |
 |---|---|
-| 🎯 **Points at your real screen** | Not a tutorial or a simulation — a transparent overlay puts the dot on the actual button in whatever app you're using. |
-| 🧠 **Understands the goal, not just the next click** | Works out what information is missing (an email address, which app you use) and asks for it simply, one question at a time. |
-| 👀 **Sees what you did** | Global click and keyboard awareness plus screen-change detection: instant *"Good!"* on the right click, and kind recovery when things go differently. |
-| 🔍 **Looks closer when it's small** | Naomi can zoom into a crowded part of the screen at full resolution before pointing, for pixel-precise guidance. |
-| 📝 **Remembers for next time** | *"I'll remember Alysa's email for next time."* Facts are stored only on your computer — never passwords or card numbers — and can be erased in one tap. |
-| 🛡️ **Watches out for you** | Gently warns about scams — gift-card requests, fake virus popups, strangers asking for remote access. |
-| 🗣️ **Speaks and listens** | Reads every instruction aloud; the 🎤 button opens Windows voice typing. Answers in your language, including Bangla. |
-| 🤝 **Designed for patience** | Big text, big buttons, "Show me again", "I'm stuck", no jargon, no judgement. Never says "wrong". |
-| 🏝️ **A calm little island** | Naomi lives in a small pill at the top of your screen, like a phone's Dynamic Island. It grows only when she needs to ask you something, and shrinks back while the dot does the pointing. |
-| 🫥 **Stays out of the way** | If Naomi needs to point at something under her island, it glides to the bottom of the screen. Everywhere else, clicks pass straight through to your apps. |
-| 🎓 **Safe practice mode** | A pretend email app where first-timers can practise with Naomi — nothing is really sent, and no setup or API key is needed. |
+| **Points at your real screen** | Not a tutorial or a simulation — a transparent overlay puts the orange dot on the actual button in whatever app you're using. |
+| **Understands the goal, not just the next click** | Works out what information is missing (an email address, which app you use) and asks for it simply, one question at a time. |
+| **Sees what you did** | Global click and keyboard awareness plus screen-change detection: an instant "Good" on the right click, and kind recovery when things go differently. |
+| **Looks closer when it's small** | Naomi can zoom into a crowded part of the screen at full resolution before pointing, for pixel-precise guidance. |
+| **Remembers for next time** | "I'll remember Alysa's email for next time." Facts are stored only on your computer — never passwords or card numbers — and can be erased in one tap. |
+| **Watches out for you** | Gently warns about scams — gift-card requests, fake virus popups, strangers asking for remote access. |
+| **Speaks and listens** | Reads every instruction aloud in a calm female voice; the Speak button opens Windows voice typing. Answers in your language, including Bangla. |
+| **Designed for patience** | Large, clear type, "Show again", "I'm stuck", no jargon, no judgement. Never says "wrong". |
+| **A calm glass island** | Naomi lives in a small dark-glass pill at the top of your screen, inspired by Apple's Dynamic Island. It grows only when she needs to ask you something, and settles back while the dot does the pointing. |
+| **Stays out of the way** | If Naomi needs to point at something under her island, it glides to the bottom of the screen. Taskbar targets get the dot just above the taskbar with an arrow. Everywhere else, clicks pass straight through to your apps. |
+| **Safe practice mode** | A pretend email app where first-timers can practise with Naomi — nothing is really sent. |
 
 ## How it works
 

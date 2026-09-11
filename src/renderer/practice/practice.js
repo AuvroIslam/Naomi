@@ -6,7 +6,7 @@ const composer = document.getElementById('composer');
 const toast = document.getElementById('toast');
 
 const INBOX = [
-  { who: 'Rafi', what: 'Photos from the weekend 📷' },
+  { who: 'Rafi', what: 'Photos from the weekend' },
   { who: 'City Pharmacy', what: 'Your prescription is ready to collect' },
   { who: 'Nasrin', what: 'Tea on Friday afternoon?' },
 ];
@@ -14,7 +14,7 @@ const SENT = [
   {
     id: 'row-alysa',
     who: 'Alysa',
-    what: 'Happy birthday, my darling! 🎂',
+    what: 'Happy birthday, my darling',
     to: 'alysa2002@gmail.com',
     body: 'Wishing you the happiest birthday. I am so proud of you. Love, Nanu',
   },

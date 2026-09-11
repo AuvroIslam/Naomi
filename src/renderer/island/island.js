@@ -1,5 +1,5 @@
-// Naomi's island: a small pill at the top of the screen that grows when she needs to talk
-// and shrinks back while the orange dot does the pointing.
+// Naomi's island: a quiet glass pill at the top of the screen. It grows when Naomi needs to talk
+// and settles back while the orange pointer does the showing.
 
 const $ = (sel) => document.querySelector(sel);
 const island = $('#island');
@@ -16,29 +16,29 @@ let flashTimer = null;
 let collapseTimer = null;
 
 const TASKS = [
-  { emoji: '✉️', label: 'Send an email', goal: 'I want to send an email' },
-  { emoji: '📹', label: 'Video call', goal: 'I want to make a video call' },
-  { emoji: '📥', label: 'Find a download', goal: 'How do I find the file I just downloaded?' },
-  { emoji: '🖨️', label: 'Print something', goal: 'I want to print a document' },
-  { emoji: '🖼️', label: 'Save a picture', goal: 'How do I download this picture?' },
-  { emoji: '📎', label: 'Attach a file', goal: 'How do I attach a file to an email?' },
+  { label: 'Send an email', goal: 'I want to send an email' },
+  { label: 'Make a video call', goal: 'I want to make a video call' },
+  { label: 'Find a download', goal: 'How do I find the file I just downloaded?' },
+  { label: 'Print something', goal: 'I want to print a document' },
+  { label: 'Save a picture', goal: 'How do I download this picture?' },
+  { label: 'Attach a file', goal: 'How do I attach a file to an email?' },
 ];
 
 // In the order Naomi tries them (keys come from the app's own setup, never from the person).
-const AI_LABELS = { openai: 'OpenAI', deepseek: 'DeepSeek', google: 'Google Gemini', anthropic: 'Claude' };
+const AI_LABELS = { openai: 'OpenAI', deepseek: 'DeepSeek', google: 'Gemini', anthropic: 'Claude' };
 
-const WIDTH = { idle: 250, compact: 480, expanded: 560 };
+const WIDTH = { idle: 232, compact: 460, expanded: 540 };
 const SIZE = { home: 'expanded', thinking: 'compact', ask: 'expanded', point: 'compact', keys: 'compact', finish: 'expanded', error: 'expanded', setup: 'expanded' };
 const BANGLA = /[ঀ-৿]/;
+// Naomi's look is plain type — strip any emoji an AI slips into its words.
+const EMOJI = /[\p{Extended_Pictographic}\u{FE0F}\u{200D}]/gu;
+const clean = (text) => String(text || '').replace(EMOJI, '').replace(/\s{2,}/g, ' ').trim();
 
 // ---------- hover tracking ----------
 // The main process decides click-through from the cursor position; here we only remember
 // whether the person is hovering (so we don't auto-collapse under their mouse).
-function setInteractive(on) {
-  interactive = on;
-}
-document.addEventListener('mousemove', (e) => setInteractive(island.contains(e.target)));
-document.addEventListener('mouseleave', () => setInteractive(false));
+document.addEventListener('mousemove', (e) => (interactive = island.contains(e.target)));
+document.addEventListener('mouseleave', () => (interactive = false));
 
 // ---------- tiny DOM helper ----------
 function h(tag, props = {}, ...children) {
@@ -55,36 +55,49 @@ function h(tag, props = {}, ...children) {
   return el;
 }
 
-const FACE_SVG = `<svg viewBox="0 0 64 64" aria-hidden="true"><defs><radialGradient id="f" cx="35%" cy="30%" r="80%"><stop offset="0" stop-color="#ffb199"/><stop offset=".6" stop-color="#ff6a4d"/><stop offset="1" stop-color="#e2482b"/></radialGradient></defs><circle cx="32" cy="32" r="30" fill="url(#f)"/><g class="eyes"><ellipse class="eye" cx="23" cy="28" rx="3.6" ry="4.6" fill="#1d2140"/><ellipse class="eye" cx="41" cy="28" rx="3.6" ry="4.6" fill="#1d2140"/></g><path class="mouth" d="M22 40 Q32 48 42 40" stroke="#1d2140" stroke-width="3.4" fill="none" stroke-linecap="round"/></svg>`;
-
-function face(mood = '', big = false) {
-  const el = h('div', { class: `face ${mood} ${big ? 'big' : ''}` });
-  el.innerHTML = FACE_SVG; // static markup, no user content
-  return el;
-}
-
+const orb = (mood = '', big = false) => h('div', { class: `orb ${mood} ${big ? 'big' : ''}`, 'aria-hidden': 'true' });
 const row = (...children) => h('div', { class: 'row' }, ...children);
-const iconBtn = (label, title, onclick) => h('button', { class: 'icon-btn', title, 'aria-label': title, onclick }, label);
 const btn = (label, onclick, cls = '') => h('button', { class: `btn ${cls}`, onclick }, label);
 
-// ---------- voice ----------
-function pickVoice(text) {
-  const voices = speechSynthesis.getVoices();
-  if (BANGLA.test(text)) return voices.find((v) => v.lang.toLowerCase().startsWith('bn')) || null;
-  return (
-    voices.find((v) => /aria|jenny|zira|female/i.test(v.name) && v.lang.startsWith('en')) ||
-    voices.find((v) => v.lang.startsWith('en')) ||
-    null
-  );
+// ---------- voice: Naomi always speaks with a woman's voice ----------
+const FEMALE = /zira|aria|jenny|hazel|susan|eva\b|linda|heera|catherine|hedda|helena|sabina|michelle|emma|sonia|libby|clara|natasha|samantha|karen|moira|tessa|fiona|victoria|female|woman/i;
+let voices = [];
+let pendingSpeech = null;
+
+// Voices load a moment after start; anything said before then waits instead of using the default
+// (on Windows the default can be a man's voice).
+function loadVoices() {
+  voices = speechSynthesis.getVoices();
+  if (voices.length && pendingSpeech) {
+    const text = pendingSpeech;
+    pendingSpeech = null;
+    speak(text);
+  }
+}
+if ('speechSynthesis' in window) {
+  loadVoices();
+  speechSynthesis.onvoiceschanged = loadVoices;
 }
 
-function speak(text) {
+function pickVoice(text) {
+  const lang = BANGLA.test(text) ? 'bn' : 'en';
+  const female = voices.filter((v) => FEMALE.test(v.name));
+  return female.find((v) => v.lang.toLowerCase().startsWith(lang)) || (lang === 'en' ? female[0] : null) || null;
+}
+
+function speak(raw) {
+  const text = clean(raw);
   if (!prefs.voice || !text || !('speechSynthesis' in window)) return;
+  if (!voices.length) {
+    pendingSpeech = text;
+    return;
+  }
   speechSynthesis.cancel();
   const voice = pickVoice(text);
-  if (!voice && BANGLA.test(text)) return;
+  if (!voice) return; // never fall back to a man's voice
   const u = new SpeechSynthesisUtterance(text);
-  if (voice) u.voice = voice;
+  u.voice = voice;
+  u.lang = voice.lang;
   u.rate = 0.92;
   u.pitch = 1.05;
   speechSynthesis.speak(u);
@@ -93,13 +106,13 @@ function speak(text) {
 // ---------- pieces ----------
 function greeting() {
   const hr = new Date().getHours();
-  if (hr < 12) return 'Good morning!';
-  if (hr < 17) return 'Good afternoon!';
-  return 'Good evening!';
+  if (hr < 12) return 'Good morning';
+  if (hr < 17) return 'Good afternoon';
+  return 'Good evening';
 }
 
-function inputRow(placeholder) {
-  const input = h('input', { id: 'input', placeholder, autocomplete: 'off', spellcheck: 'false' });
+function inputRow(placeholder, submitLabel = 'Ask') {
+  const input = h('input', { id: 'input', class: 'field', placeholder, autocomplete: 'off', spellcheck: 'false' });
   const send = () => {
     const text = input.value.trim();
     if (!text) return input.focus();
@@ -109,22 +122,21 @@ function inputRow(placeholder) {
     return undefined;
   };
   input.addEventListener('keydown', (e) => e.key === 'Enter' && send());
-  const mic = h('button', { class: 'round', title: 'Speak instead of typing', 'aria-label': 'Speak', onclick: () => voiceType(input) }, '🎤');
-  return h('div', { class: 'input-row' }, mic, input, h('button', { class: 'round send', title: 'Send', 'aria-label': 'Send', onclick: send }, '➜'));
+  return h('div', { class: 'input-row' }, input, btn('Speak', () => voiceType(input), 'quiet'), btn(submitLabel, send, 'primary'));
 }
 
 async function voiceType(input) {
   input.focus();
   const ok = await window.naomi.voiceType();
-  if (!ok) showFlash('Voice typing isn’t available. Please type instead.', true, 2500);
-}
-
-function stepLine(s) {
-  return h('div', {}, h('span', { class: 'step' }, `Step ${s.step}`), s.practice ? h('span', { class: 'practice-tag' }, 'Practice') : null);
+  if (!ok) showFlash('Voice typing isn’t available here', 'gentle', 2400);
 }
 
 function stopButton() {
-  return iconBtn('✕', 'Stop', goHome);
+  return btn('Stop', () => goHome(), 'quiet');
+}
+
+function stepLabel(s) {
+  return h('div', { class: 'step' }, `Step ${s.step}${s.practice ? ' · Practice' : ''}`);
 }
 
 function connectedAIs() {
@@ -137,61 +149,59 @@ function connectedAIs() {
 const renderers = {
   home() {
     if (collapsed) {
-      return [row(face(), h('span', { class: 'idle-text' }, 'Ask Naomi'), h('span', { class: 'idle-hint' }, 'Ctrl + Alt + N'))];
+      return [row(orb(), h('span', { class: 'idle-text' }, 'Ask Naomi'), h('span', { class: 'idle-hint' }, 'Ctrl Alt N'))];
     }
     return [
-      row(
-        face('', true),
-        h('div', { class: 'grow' }, h('div', { class: 'hello' }, `${greeting()} I'm Naomi.`), h('div', { class: 'title' }, 'What would you like to do?')),
-        iconBtn('⚙', 'Settings', openSettings),
-        iconBtn('–', 'Make Naomi small', collapse),
-        iconBtn('×', 'Close Naomi', () => window.naomi.windowAction('quit')),
-      ),
-      inputRow('Tell me in your own words…'),
       h(
         'div',
-        { class: 'tasks' },
-        TASKS.map((t) => h('button', { class: 'task', onclick: () => begin(t.goal) }, h('span', { class: 'emoji' }, t.emoji), t.label)),
+        { class: 'row top' },
+        orb('', true),
+        h('div', { class: 'grow' }, h('div', { class: 'eyebrow' }, `${greeting()}. I’m Naomi.`), h('div', { class: 'title' }, 'What would you like to do?')),
+        h('div', { class: 'header-actions' }, btn('Settings', openSettings, 'quiet'), btn('Hide', collapse, 'quiet')),
       ),
-      h('p', { class: 'muted' }, 'There are no wrong questions. I’ll show you where to click with an orange dot.'),
+      inputRow('Tell me in your own words'),
+      h('div', { class: 'tasks' }, TASKS.map((t) => h('button', { class: 'task', onclick: () => begin(t.goal) }, t.label))),
+      h('p', { class: 'caption' }, 'There are no wrong questions. Naomi shows you exactly where to click.'),
     ];
   },
 
   thinking(s) {
     let line = 'Looking at your screen…';
     if (s.closer) line = 'Looking a little closer…';
-    else if (s.after === 'point' || s.after === 'keys') line = 'Let me see what happened…';
-    else if (s.after === 'ask') line = 'Thank you. One moment…';
-    return [row(face('thinking'), h('span', { class: 'say grow' }, line), h('span', { class: 'dots' }, h('i'), h('i'), h('i')), stopButton())];
+    else if (s.after === 'point' || s.after === 'keys') line = 'Checking what happened…';
+    else if (s.after === 'ask') line = 'One moment…';
+    return [row(orb('thinking'), h('span', { class: 'say grow' }, line), stopButton())];
   },
 
   ask(s) {
+    const choices = (s.choices || []).map(clean).filter(Boolean);
     return [
-      lastUserText ? h('div', { class: 'you' }, `You: ${lastUserText}`) : null,
-      h('div', { class: 'row top' }, face(), h('div', { class: 'say grow' }, s.question), stopButton()),
-      s.choices && s.choices.length
-        ? h('div', { class: 'choices' }, s.choices.map((c) => btn(c, () => answer(c), 'choice')))
-        : null,
-      inputRow(s.choices && s.choices.length ? 'Or type your answer…' : 'Type your answer…'),
+      h(
+        'div',
+        { class: 'row top' },
+        orb(),
+        h('div', { class: 'grow' }, lastUserText ? h('div', { class: 'eyebrow' }, lastUserText) : null, h('div', { class: 'say' }, clean(s.question))),
+        stopButton(),
+      ),
+      choices.length ? h('div', { class: 'choices' }, choices.map((c) => btn(c, () => answer(c)))) : null,
+      inputRow(choices.length ? 'Or type your answer' : 'Type your answer', 'Reply'),
     ];
   },
 
   point(s) {
-    const primary =
-      { type: "✓ I've typed it", look: '✓ Okay, next', scroll_down: '✓ Done scrolling', scroll_up: '✓ Done scrolling' }[s.action] ||
-      '✓ I did it';
+    const primary = { type: 'I’ve typed it', look: 'Next', scroll_down: 'Done', scroll_up: 'Done' }[s.action] || 'Done';
     return [
-      h('div', { class: 'row top' }, face(), h('div', { class: 'grow' }, stepLine(s), h('div', { class: 'say' }, s.say)), stopButton()),
-      s.typeText ? h('div', {}, h('div', { class: 'type-label' }, 'Type this:'), h('div', { class: 'type-chip' }, s.typeText)) : null,
+      h('div', { class: 'row top' }, orb(), h('div', { class: 'grow' }, stepLabel(s), h('div', { class: 'say' }, clean(s.say))), stopButton()),
+      s.typeText ? h('div', { class: 'type-block' }, h('span', { class: 'eyebrow' }, 'Type'), h('span', { class: 'type-chip' }, s.typeText)) : null,
       h(
         'div',
         { class: 'actions' },
-        btn(primary, () => window.naomi.confirm(), 'primary small'),
-        btn('🔁 Show me again', () => {
+        btn(primary, () => window.naomi.confirm(), 'primary'),
+        btn('Show again', () => {
           speak(s.say);
           window.naomi.replay();
-        }, 'small'),
-        btn("😕 I'm stuck", onStuck, 'small'),
+        }),
+        btn('I’m stuck', onStuck),
       ),
     ];
   },
@@ -200,35 +210,35 @@ const renderers = {
     const keys = [];
     s.keys.forEach((k, i) => {
       if (i) keys.push(h('span', { class: 'plus' }, '+'));
-      keys.push(h('span', { class: 'key' }, k));
+      keys.push(h('span', { class: 'key' }, clean(k)));
     });
     return [
-      h('div', { class: 'row top' }, face(), h('div', { class: 'grow' }, stepLine(s), h('div', { class: 'say' }, s.say)), stopButton()),
+      h('div', { class: 'row top' }, orb(), h('div', { class: 'grow' }, stepLabel(s), h('div', { class: 'say' }, clean(s.say))), stopButton()),
       h('div', { class: 'keys' }, keys),
-      h(
-        'div',
-        { class: 'actions' },
-        btn('✓ I did it', () => window.naomi.confirm(), 'primary small'),
-        btn('🔊 Say again', () => speak(s.say), 'small'),
-        btn("😕 I'm stuck", onStuck, 'small'),
-      ),
+      h('div', { class: 'actions' }, btn('Done', () => window.naomi.confirm(), 'primary'), btn('Repeat', () => speak(s.say)), btn('I’m stuck', onStuck)),
     ];
   },
 
   finish(s) {
+    const remembered = (s.remembered || []).map(clean).filter(Boolean);
     return [
-      h('div', { class: 'row top' }, face(s.success ? 'happy' : '', true), h('div', { class: 'say grow' }, `${s.success ? '🎉 ' : ''}${s.say}`)),
-      s.remembered && s.remembered.length
-        ? h('div', { class: 'memo' }, "📝 I'll remember for next time:", h('ul', {}, s.remembered.map((m) => h('li', {}, m))))
+      h(
+        'div',
+        { class: 'row top' },
+        orb(s.success ? 'happy' : '', true),
+        h('div', { class: 'grow' }, h('div', { class: 'eyebrow' }, s.success ? 'All done' : 'Not this time'), h('div', { class: 'say' }, clean(s.say))),
+      ),
+      remembered.length
+        ? h('div', { class: 'memo' }, h('div', { class: 'eyebrow' }, 'Remembered for next time'), h('ul', {}, remembered.map((m) => h('li', {}, m))))
         : null,
-      h('div', { class: 'actions' }, btn(s.practice ? 'Now try something real' : 'Do something else', goHome, 'coral')),
+      h('div', { class: 'actions' }, btn(s.practice ? 'Try something real' : 'Close', () => goHome(!s.practice), 'primary')),
     ];
   },
 
   error(s) {
     return [
-      h('div', { class: 'row top' }, face(), h('div', { class: 'say grow' }, s.say || "Something went wrong. Let's try again.")),
-      h('div', { class: 'actions' }, btn('Try again', () => window.naomi.retry(), 'coral'), btn('Start over', goHome)),
+      h('div', { class: 'row top' }, orb(), h('div', { class: 'say grow' }, clean(s.say) || 'Something went wrong.')),
+      h('div', { class: 'actions' }, btn('Try again', () => window.naomi.retry(), 'primary'), btn('Start over', () => goHome())),
     ];
   },
 
@@ -238,20 +248,20 @@ const renderers = {
       h(
         'div',
         { class: 'row top' },
-        face('', true),
+        orb('', true),
         h(
           'div',
           { class: 'grow' },
           h('div', { class: 'say' }, 'I can’t reach my helper right now.'),
-          h('div', { class: 'muted', style: 'margin:4px 0 0' }, 'Please check the internet connection, or ask whoever set up Naomi. You can still practise safely.'),
+          h('div', { class: 'body' }, 'Check the internet connection, or ask whoever set up Naomi. You can still practise safely.'),
         ),
         stopButton(),
       ),
       h(
         'div',
         { class: 'actions' },
-        btn('Try again', () => (s.goal ? begin(s.goal) : goHome()), 'coral'),
-        btn('🎓 Practise safely', () => window.naomi.practice()),
+        btn('Try again', () => (s.goal ? begin(s.goal) : goHome()), 'primary'),
+        btn('Practise safely', () => window.naomi.practice()),
       ),
     ];
   },
@@ -259,32 +269,42 @@ const renderers = {
 
 function renderSettings() {
   const toggle = (label, checked, onchange) => {
-    const box = h('input', { type: 'checkbox' });
+    const box = h('input', { type: 'checkbox', class: 'switch' });
     box.checked = checked;
     box.addEventListener('change', () => onchange(box.checked));
-    return h('label', { class: 'row-opt' }, h('span', {}, label), box);
+    return h('label', { class: 'opt' }, h('span', {}, label), box);
   };
   const ais = connectedAIs();
+  const count = prefs.memoryCount || 0;
   return [
-    row(face(), h('div', { class: 'title grow' }, 'Settings'), iconBtn('✕', 'Close settings', closeSettings)),
+    row(h('div', { class: 'title grow' }, 'Settings'), btn('Close', closeSettings, 'quiet')),
     h(
       'div',
-      { class: 'settings' },
-      toggle('Read messages out loud', prefs.voice, async (v) => applyPrefs(await window.naomi.setPrefs({ voice: v }))),
-      toggle('Extra large text', prefs.textSize === 'xlarge', async (v) => applyPrefs(await window.naomi.setPrefs({ textSize: v ? 'xlarge' : 'large' }))),
-      toggle('Dim the screen around the dot', prefs.spotlight, async (v) => applyPrefs(await window.naomi.setPrefs({ spotlight: v }))),
+      { class: 'group' },
+      toggle('Read messages aloud', prefs.voice, async (v) => applyPrefs(await window.naomi.setPrefs({ voice: v }))),
+      toggle('Larger text', prefs.textSize === 'xlarge', async (v) => applyPrefs(await window.naomi.setPrefs({ textSize: v ? 'xlarge' : 'large' }))),
+      toggle('Dim around the pointer', prefs.spotlight, async (v) => applyPrefs(await window.naomi.setPrefs({ spotlight: v }))),
+    ),
+    h(
+      'div',
+      { class: 'group' },
       h(
         'div',
-        { class: 'row-opt' },
-        h('span', {}, `Naomi remembers ${prefs.memoryCount || 0} things`),
-        btn('Forget all', async () => {
+        { class: 'opt' },
+        h('span', {}, `Remembers ${count} ${count === 1 ? 'thing' : 'things'}`),
+        btn('Forget', async () => {
           applyPrefs(await window.naomi.clearMemory());
           render(state);
-        }, 'small'),
+        }, 'quiet'),
       ),
-      h('div', { class: 'row-opt' }, h('span', {}, 'AI helper'), h('span', { class: 'muted', style: 'margin:0' }, ais.length ? ais.join(' → ') : 'not set up')),
+      h('div', { class: 'opt' }, h('span', {}, 'AI'), h('span', { class: 'value' }, ais.length ? ais.join(', ') : 'Not set up')),
     ),
-    h('p', { class: 'muted' }, 'Press Ctrl + Alt + N any time to bring Naomi back.'),
+    h(
+      'div',
+      { class: 'row spread' },
+      h('span', { class: 'caption', style: 'margin:0' }, 'Ctrl + Alt + N brings Naomi back'),
+      btn('Quit Naomi', () => window.naomi.windowAction('quit'), 'quiet danger'),
+    ),
   ];
 }
 
@@ -324,17 +344,18 @@ function render(s) {
   else if (['point', 'keys', 'finish', 'error'].includes(s.phase)) speak(s.say);
   if (s.phase === 'finish') {
     window.naomi.getPrefs().then(applyPrefs);
-    // Get out of the way after a moment of celebration.
+    // Get out of the way after a moment.
     collapseTimer = setTimeout(() => {
       if (state.phase === 'finish' && !interactive) goHome(true);
     }, 12000);
   }
 }
 
-function showFlash(text, gentle = false, ms = 1400) {
+function showFlash(text, tone = 'good', ms = 1400) {
   clearTimeout(flashTimer);
-  flash.textContent = text;
-  flash.className = gentle ? 'flash gentle' : 'flash';
+  // Naomi smiles when you get it right.
+  flash.replaceChildren(orb(tone === 'good' ? 'happy' : ''), h('span', {}, text));
+  flash.className = `flash ${tone}`;
   flash.hidden = false;
   flashTimer = setTimeout(() => (flash.hidden = true), ms);
 }
@@ -352,7 +373,7 @@ function answer(text) {
 }
 
 function onStuck() {
-  lastUserText = "I'm stuck";
+  lastUserText = 'I’m stuck';
   window.naomi.stuck();
 }
 
@@ -400,21 +421,21 @@ window.naomi.onFeedback((fb) => {
   if (fb.type === 'hit') {
     island.classList.add('good');
     setTimeout(() => island.classList.remove('good'), 1200);
-    showFlash(fb.then === 'type' ? '👍 Good! Now type.' : '👍 Good!');
+    showFlash(fb.then === 'type' ? 'Good. Now type.' : 'Good', 'good');
     speak(fb.then === 'type' ? 'Good. Now type.' : 'Good.');
   } else if (fb.type === 'provider') {
-    showFlash('One moment…', true, 2000);
+    showFlash('One moment…', 'gentle', 1800);
   } else if (fb.type === 'nudge') {
     island.classList.remove('shake');
     void island.offsetWidth;
     island.classList.add('shake');
     if (fb.reason === 'typing-idle') {
-      showFlash('Finished typing? Press the green button.', true, 3500);
+      showFlash('Finished typing? Press “I’ve typed it”.', 'gentle', 3500);
       const done = content.querySelector('.btn.primary');
       if (done) done.classList.add('pulse');
     } else {
-      const text = 'Take your time. The orange dot shows you where.';
-      showFlash(text, true, 3500);
+      const text = 'Take your time. Follow the orange dot.';
+      showFlash(text, 'gentle', 3500);
       speak(text);
     }
   }
@@ -438,5 +459,5 @@ function applyPrefs(p) {
 (async () => {
   applyPrefs(await window.naomi.getPrefs());
   render(await window.naomi.getState());
-  setTimeout(() => state.phase === 'home' && !collapsed && speak("Hello, I'm Naomi. What would you like to do today?"), 700);
+  setTimeout(() => state.phase === 'home' && !collapsed && speak('Hello, I’m Naomi. What would you like to do today?'), 700);
 })();

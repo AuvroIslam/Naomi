@@ -8,7 +8,8 @@ html,
 body {
   margin: 0;
   height: 100%;
-  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-family: 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
   color: #202124;
   background: #f6f8fc;
   font-size: 17px;
@@ -163,9 +164,16 @@ button {
 }
 .c-close {
   border: 0;
+  border-radius: 8px;
+  padding: 4px 10px;
   background: transparent;
-  font-size: 22px;
-  line-height: 1;
+  color: #5f6368;
+  font-size: 14px;
+  font-weight: 500;
+}
+.c-close:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: #202124;
 }
 .c-row {
   display: flex;
