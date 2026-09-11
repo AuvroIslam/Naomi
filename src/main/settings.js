@@ -4,7 +4,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { app } = require('electron');
-const { PROVIDERS, keysFromEnv } = require('./providers');
+const { PROVIDERS, allKeysFromEnv } = require('./providers');
 
 const DEFAULTS = {
   voice: true,
@@ -30,9 +30,10 @@ function writeRaw(data) {
   fs.writeFileSync(file(), JSON.stringify(data, null, 2));
 }
 
-// { openai, deepseek, google, anthropic } from the environment (.env).
+// { openai: [...], deepseek: [...], google: [...], anthropic: [...] } from the environment (.env),
+// main key first, then any spares (…_FALLBACK).
 function getKeys() {
-  return keysFromEnv();
+  return allKeysFromEnv();
 }
 
 // Preferences safe to hand to the renderer (says which AIs are configured, never the keys).

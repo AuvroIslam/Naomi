@@ -1,11 +1,12 @@
-// Checks every AI provider you've set a key for: `npm run check`.
+// Checks every AI key you've set: `npm run check`, or just one provider: `npm run check -- google`.
 // Sends Naomi's real prompt + tools with a small synthetic "screen" to each, in fallback order.
+// Keys themselves are never printed.
 const path = require('node:path');
 const zlib = require('node:zlib');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env'), quiet: true });
 const AnthropicModule = require('@anthropic-ai/sdk');
 const { GuideSession } = require('../src/main/guide');
-const { PROVIDERS, keysFromEnv, buildLinks } = require('../src/main/providers');
+const { PROVIDERS, allKeysFromEnv, buildLinks } = require('../src/main/providers');
 
 const Anthropic = AnthropicModule.default || AnthropicModule;
 
@@ -82,11 +83,11 @@ async function tryLink(link) {
 }
 
 async function main() {
-  const keys = keysFromEnv();
-  const links = buildLinks(keys, { Anthropic });
+  const only = process.argv.slice(2).map((s) => s.toLowerCase());
+  const links = buildLinks(allKeysFromEnv(), { Anthropic }).filter((l) => !only.length || only.includes(l.id));
   if (!links.length) {
-    console.error('No AI keys found. Add at least one to .env:');
-    for (const p of PROVIDERS) console.error(`  ${p.env[0]}=...`);
+    console.error(only.length ? `No keys found for: ${only.join(', ')}` : 'No AI keys found. Add at least one to .env:');
+    for (const p of PROVIDERS) console.error(`  ${p.env[0]}=...   (spare key: ${p.env[0]}_FALLBACK=...)`);
     console.error('Google Gemini is free: https://aistudio.google.com/apikey');
     process.exit(1);
   }

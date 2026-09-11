@@ -7,6 +7,7 @@ const OpenAIModule = require('openai');
 const OpenAI = OpenAIModule.OpenAI || OpenAIModule.default || OpenAIModule;
 
 // Tried in this order. Every model here can see images and call tools.
+// Each env name may also have a spare key: e.g. GEMINI_API_KEY_FALLBACK.
 const PROVIDERS = [
   { id: 'openai', label: 'OpenAI', env: ['OPENAI_API_KEY'], models: ['gpt-5.4-mini'], openai: true },
   {
@@ -27,22 +28,48 @@ const PROVIDERS = [
   { id: 'anthropic', label: 'Claude', env: ['ANTHROPIC_API_KEY'], native: true },
 ];
 
+const FALLBACK_SUFFIXES = ['_FALLBACK', '_2'];
 // Only the last few screenshots are sent to these providers; older ones become a note.
 const KEEP_IMAGES = 4;
 // A provider that just failed (bad key, no credit, model missing) is skipped for a while.
 const COOL_OFF_MS = 10 * 60 * 1000;
 
+// Env names are matched case-insensitively (GEMINI_API_KEY_Fallback works too).
+function envLookup(env, name) {
+  if (env[name]) return env[name];
+  const upper = name.toUpperCase();
+  const hit = Object.keys(env).find((k) => k.toUpperCase() === upper);
+  return hit ? env[hit] : undefined;
+}
+
+// The main key for each provider.
 function keysFromEnv(env = process.env) {
   const keys = {};
   for (const p of PROVIDERS) {
-    const key = p.env.map((name) => env[name]).find(Boolean);
+    const key = p.env.map((name) => envLookup(env, name)).find(Boolean);
     if (key) keys[p.id] = key;
   }
   return keys;
 }
 
+// Every key for each provider, main key first, then spares (…_FALLBACK, …_2), without repeats.
+function allKeysFromEnv(env = process.env) {
+  const keys = {};
+  for (const p of PROVIDERS) {
+    const found = [];
+    for (const name of p.env) {
+      for (const candidate of [name, ...FALLBACK_SUFFIXES.map((s) => name + s)]) {
+        const value = (envLookup(env, candidate) || '').trim();
+        if (value && !found.includes(value)) found.push(value);
+      }
+    }
+    if (found.length) keys[p.id] = found;
+  }
+  return keys;
+}
+
 function modelsFor(provider, env = process.env) {
-  const override = env[`NAOMI_${provider.id.toUpperCase()}_MODEL`];
+  const override = envLookup(env, `NAOMI_${provider.id.toUpperCase()}_MODEL`);
   return override ? override.split(',').map((m) => m.trim()).filter(Boolean) : provider.models;
 }
 
@@ -174,21 +201,32 @@ function createOpenAICompatClient({ provider, model, apiKey, OpenAIClass = OpenA
   };
 }
 
-// One link per (provider, model) the person has a key for, in fallback order.
+/**
+ * One link per (provider, model, key), in fallback order. Within a provider the better model is
+ * tried with every key before dropping to the next model (a used-up free quota on key 1 moves
+ * to key 2, not straight to a weaker model).
+ * @param {Record<string, string|string[]>} keys
+ */
 function buildLinks(keys, { OpenAIClass = OpenAI, Anthropic = null, env = process.env } = {}) {
   const links = [];
   for (const provider of PROVIDERS) {
-    const apiKey = keys[provider.id];
-    if (!apiKey) continue;
+    const list = [].concat(keys[provider.id] || []).filter(Boolean);
+    if (!list.length) continue;
+    const keyTag = (i) => (i ? `key ${i + 1}` : '');
     if (provider.native) {
-      if (Anthropic) links.push({ id: provider.id, name: provider.label, client: new Anthropic({ apiKey }) });
+      if (!Anthropic) continue;
+      list.forEach((apiKey, i) => {
+        links.push({ id: provider.id, name: i ? `${provider.label} (${keyTag(i)})` : provider.label, client: new Anthropic({ apiKey }) });
+      });
       continue;
     }
     for (const model of modelsFor(provider, env)) {
-      links.push({
-        id: provider.id,
-        name: `${provider.label} (${model})`,
-        client: createOpenAICompatClient({ provider, model, apiKey, OpenAIClass }),
+      list.forEach((apiKey, i) => {
+        links.push({
+          id: provider.id,
+          name: `${provider.label} (${[model, keyTag(i)].filter(Boolean).join(', ')})`,
+          client: createOpenAICompatClient({ provider, model, apiKey, OpenAIClass }),
+        });
       });
     }
   }
@@ -247,6 +285,7 @@ function createChainClient(links, { health = new Map(), onSwitch = null, now = D
 module.exports = {
   PROVIDERS,
   keysFromEnv,
+  allKeysFromEnv,
   modelsFor,
   toOpenAIMessages,
   toOpenAITools,
