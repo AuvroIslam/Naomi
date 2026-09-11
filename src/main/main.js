@@ -14,14 +14,14 @@ const { createPracticeClient } = require('./practiceClient');
 const { pointInRect } = require('./geometry');
 
 const Anthropic = AnthropicModule.default || AnthropicModule;
-const PANEL_W = 420;
-const PANEL_H = 680;
-const MARGIN = 16;
+// The island window is mostly transparent and click-through; the pill inside it morphs.
+const ISLAND_W = 600;
+const ISLAND_H = 480;
 const SUMMON_KEY = 'CommandOrControl+Alt+N';
 const PRACTICE_GOAL = 'Practice: send an email to my granddaughter';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-let panel;
+let island;
 let overlay;
 let practiceWin = null;
 let memory;
@@ -29,50 +29,52 @@ let session = null;
 let watcher;
 let hook = null;
 let hookKeys = null;
-let panelSide = 'right';
+let dock = 'top';
+let pillRect = null; // screen DIP rect of the visible pill, reported by the renderer
 let pointerAt = null; // screen DIP point where the dot currently rests
 let lastPoint = null; // last pointer message, for "show me again"
 let lastState = { phase: 'home' };
 
 // ---------- windows ----------
 
-// Roughly a third of the screen at most, so Naomi never crowds out what she's pointing at.
-function panelBoundsFor(side) {
+function islandBoundsFor(side) {
   const wa = primaryDisplay().workArea;
-  const width = Math.round(Math.min(PANEL_W, Math.max(340, wa.width * 0.3)));
-  const height = Math.round(Math.min(PANEL_H, wa.height - MARGIN * 2));
+  const width = Math.round(Math.min(ISLAND_W, wa.width - 24));
+  const height = Math.round(Math.min(ISLAND_H, wa.height - 24));
   return {
-    x: side === 'right' ? wa.x + wa.width - width - MARGIN : wa.x + MARGIN,
-    y: wa.y + wa.height - height - MARGIN,
+    x: wa.x + Math.round((wa.width - width) / 2),
+    y: side === 'top' ? wa.y : wa.y + wa.height - height,
     width,
     height,
   };
 }
 
-function createPanel() {
-  panel = new BrowserWindow({
-    ...panelBoundsFor(panelSide),
+function createIsland() {
+  island = new BrowserWindow({
+    ...islandBoundsFor(dock),
     title: 'Naomi',
     frame: false,
     transparent: true,
     resizable: false,
     maximizable: false,
+    minimizable: false,
     fullscreenable: false,
+    hasShadow: false,
     alwaysOnTop: true,
     show: false,
     icon: path.join(__dirname, '..', '..', 'assets', 'icon.png'),
     webPreferences: {
-      preload: path.join(__dirname, '..', 'preload', 'panel-preload.js'),
+      preload: path.join(__dirname, '..', 'preload', 'island-preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
     },
   });
-  // Above other always-on-top windows (video-call popouts etc.), just below the pointer overlay.
-  panel.setAlwaysOnTop(true, 'pop-up-menu');
-  panel.loadFile(path.join(__dirname, '..', 'renderer', 'panel', 'index.html'));
-  panel.once('ready-to-show', () => panel.show());
-  panel.on('closed', () => app.quit());
+  island.setIgnoreMouseEvents(true, { forward: true });
+  island.setAlwaysOnTop(true, 'pop-up-menu');
+  island.loadFile(path.join(__dirname, '..', 'renderer', 'island', 'index.html'));
+  island.once('ready-to-show', () => island.show());
+  island.on('closed', () => app.quit());
 }
 
 function createOverlay() {
@@ -106,12 +108,12 @@ function createOverlay() {
 }
 
 // On Windows every always-on-top window shares one band and the last one raised wins, so
-// re-stack ours before pointing: practice window < panel < pointer overlay.
+// re-stack ours before pointing: practice window < island < pointer overlay.
 function restack() {
   if (practiceWin && !practiceWin.isDestroyed()) practiceWin.setAlwaysOnTop(true, 'floating');
-  if (panel && !panel.isDestroyed()) {
-    panel.setAlwaysOnTop(true, 'pop-up-menu');
-    panel.moveTop();
+  if (island && !island.isDestroyed()) {
+    island.setAlwaysOnTop(true, 'pop-up-menu');
+    island.moveTop();
   }
   if (overlay && !overlay.isDestroyed()) {
     overlay.setAlwaysOnTop(true, 'screen-saver');
@@ -132,48 +134,55 @@ function toOverlay(pt) {
 
 function sendState(state) {
   lastState = state;
-  if (panel && !panel.isDestroyed()) panel.webContents.send('naomi:state', state);
+  if (island && !island.isDestroyed()) island.webContents.send('naomi:state', state);
 }
 
 function sendFeedback(fb) {
-  if (panel && !panel.isDestroyed()) panel.webContents.send('naomi:feedback', fb);
+  if (island && !island.isDestroyed()) island.webContents.send('naomi:feedback', fb);
 }
 
 function prefsForRenderer() {
-  return { ...settings.getPrefs(), memoryCount: memory.list().length, summonKey: 'Ctrl + Alt + N' };
+  return { ...settings.getPrefs(), memoryCount: memory.list().length };
 }
 
-function movePanelTo(side) {
-  panelSide = side;
-  panel.setBounds(panelBoundsFor(side));
+// The part of the screen Naomi herself occupies (just the pill, not the transparent window).
+function naomiRect() {
+  return pillRect || island.getBounds();
 }
 
-// If Naomi points at something under her own panel, she scoots to the other side.
-function keepPanelClear(pt) {
-  if (!panel || !pointInRect(pt, panel.getBounds(), 60)) return;
-  movePanelTo(panelSide === 'right' ? 'left' : 'right');
+function setDock(side) {
+  dock = side;
+  pillRect = null;
+  island.setBounds(islandBoundsFor(side));
+  island.webContents.send('naomi:dock', side);
 }
 
-// Where the dot "comes from" when it first appears: Naomi's face in the panel header.
+// If Naomi needs to point at something under the island, the island slides to the other edge.
+function keepIslandClear(pt) {
+  if (!island || !pointInRect(pt, naomiRect(), 60)) return;
+  setDock(dock === 'top' ? 'bottom' : 'top');
+}
+
+// Where the dot "comes from" when it first appears: Naomi's face in the island.
 function avatarPoint() {
-  const b = panel.getBounds();
-  return { x: b.x + 46, y: b.y + 46 };
+  const r = naomiRect();
+  return { x: r.x + 30, y: r.y + Math.min(30, r.height / 2) };
 }
 
 function summon() {
-  if (!panel || panel.isDestroyed()) return;
-  if (panel.isMinimized()) panel.restore();
-  panel.show();
-  panel.focus();
+  if (!island || island.isDestroyed()) return;
+  island.show();
+  island.focus();
+  island.webContents.send('naomi:summon');
 }
 
 // ---------- practice mode ----------
 
 function practiceBounds() {
   const wa = primaryDisplay().workArea;
-  const width = Math.round(Math.min(860, wa.width - panelBoundsFor('right').width - MARGIN * 3));
-  const height = Math.round(Math.min(640, wa.height - MARGIN * 2));
-  return { x: wa.x + MARGIN, y: wa.y + Math.round((wa.height - height) / 2), width, height };
+  const width = Math.round(Math.min(900, wa.width - 40));
+  const height = Math.round(Math.min(620, wa.height - 110));
+  return { x: wa.x + Math.round((wa.width - width) / 2), y: wa.y + wa.height - height - 12, width, height };
 }
 
 async function ensurePracticeWindow() {
@@ -201,7 +210,7 @@ async function locatePractice(id) {
 async function startPractice() {
   endSession();
   closePractice();
-  movePanelTo('right');
+  if (dock !== 'top') setDock('top');
   const win = await ensurePracticeWindow();
   win.focus();
   startSession(PRACTICE_GOAL, { client: createPracticeClient({ locate: locatePractice }), practice: true });
@@ -209,33 +218,30 @@ async function startPractice() {
 
 // ---------- seeing the screen ----------
 
-// Hide the pointer for a moment so Claude sees the screen, not Naomi's dot.
-async function withOverlayHidden(fn) {
-  const hide = overlay && !overlay.isDestroyed();
-  if (hide) {
-    overlay.setOpacity(0);
-    await sleep(80);
-  }
+// Hide Naomi (island + dot) for a blink so Claude sees the person's screen, not Naomi.
+async function withNaomiHidden(fn) {
+  const wins = [overlay, island].filter((w) => w && !w.isDestroyed());
+  for (const w of wins) w.setOpacity(0);
+  await sleep(90);
   try {
     return await fn();
   } finally {
-    if (hide) overlay.setOpacity(1);
+    for (const w of wins) if (!w.isDestroyed()) w.setOpacity(1);
   }
 }
 
 function captureClean() {
-  return withOverlayHidden(() => captureForClaude({ maskRects: [panel.getBounds()] }));
+  return withNaomiHidden(() => captureForClaude());
 }
 
 function captureZoom(region, shot) {
   const a = shot.toScreen({ x: region.x, y: region.y });
   const b = shot.toScreen({ x: region.x + region.width, y: region.y + region.height });
-  const rect = { x: a.x, y: a.y, width: b.x - a.x, height: b.y - a.y };
-  return withOverlayHidden(() => captureRegion(rect, { maskRects: [panel.getBounds()] }));
+  return withNaomiHidden(() => captureRegion({ x: a.x, y: a.y, width: b.x - a.x, height: b.y - a.y }));
 }
 
 function signature() {
-  const masks = [panel.getBounds()];
+  const masks = [naomiRect()];
   if (pointerAt) masks.push({ x: pointerAt.x - 430, y: pointerAt.y - 120, width: 860, height: 270 });
   return captureSignature({ maskRects: masks });
 }
@@ -308,7 +314,7 @@ function startSession(goal, { client = makeClient(), practice = false } = {}) {
     state({ phase: 'ask', question: q.question, choices: q.choices });
   }));
   s.on('point', live((p) => {
-    keepPanelClear(p.screen);
+    keepIslandClear(p.screen);
     pointerAt = p.screen;
     lastPoint = {
       type: 'point',
@@ -350,8 +356,8 @@ function wireWatcher(input) {
   watcher = new ActionWatcher({
     input,
     getSignature: signature,
-    isNaomiPoint: (pt) => panel && pointInRect(pt, panel.getBounds()),
-    isNaomiFocused: () => panel && panel.isFocused(),
+    isNaomiPoint: (pt) => island && pointInRect(pt, naomiRect()),
+    isNaomiFocused: () => island && island.isFocused(),
   });
   watcher.on('hit', (h) => {
     overlaySend({ type: 'hit', then: h.then });
@@ -369,6 +375,16 @@ function wireWatcher(input) {
 // ---------- IPC ----------
 
 function wireIpc() {
+  // Island plumbing: take the mouse only over the pill, and remember where the pill is.
+  ipcMain.on('naomi:interactive', (_e, on) => {
+    if (island && !island.isDestroyed()) island.setIgnoreMouseEvents(!on, { forward: true });
+  });
+  ipcMain.on('naomi:island-rect', (_e, r) => {
+    if (!island || island.isDestroyed() || !r) return;
+    const b = island.getBounds();
+    pillRect = { x: b.x + r.x, y: b.y + r.y, width: r.width, height: r.height };
+  });
+
   ipcMain.handle('naomi:start', (_e, text) => {
     closePractice();
     startSession(String(text || '').slice(0, 1000));
@@ -394,6 +410,7 @@ function wireIpc() {
   ipcMain.handle('naomi:stop', () => {
     endSession();
     closePractice();
+    if (dock !== 'top') setDock('top');
     sendState({ phase: 'home' });
   });
   ipcMain.handle('naomi:state:get', () => lastState);
@@ -418,7 +435,6 @@ function wireIpc() {
     return true;
   });
   ipcMain.handle('naomi:window', (_e, action) => {
-    if (action === 'minimize') panel.minimize();
     if (action === 'quit') app.quit();
   });
 }
@@ -436,9 +452,9 @@ if (!app.requestSingleInstanceLock()) {
     wireWatcher(input);
     wireIpc();
     createOverlay();
-    createPanel();
+    createIsland();
     globalShortcut.register(SUMMON_KEY, summon);
-    if (process.argv.includes('--practice')) panel.webContents.once('did-finish-load', () => startPractice());
+    if (process.argv.includes('--practice')) island.webContents.once('did-finish-load', () => startPractice());
   });
 
   app.on('will-quit', () => {

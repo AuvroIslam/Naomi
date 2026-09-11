@@ -29,13 +29,16 @@
       "node_modules/uiohook-napi/**/*"
     ],
     "win": {
-      "icon": "assets/icon.png",
-      "artifactName": "Naomi-${version}-${arch}-${target}.${ext}"
+      "icon": "assets/icon.png"
     },
     "nsis": {
       "oneClick": true,
       "perMachine": false,
-      "shortcutName": "Naomi"
+      "shortcutName": "Naomi",
+      "artifactName": "Naomi-Setup-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "Naomi-Portable-${version}.${ext}"
     }
   },
   "dependencies": {

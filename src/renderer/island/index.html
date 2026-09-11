@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
+    />
+    <title>Naomi</title>
+    <link rel="stylesheet" href="island.css" />
+  </head>
+  <body>
+    <div class="dock">
+      <div class="island idle" id="island" role="dialog" aria-label="Naomi">
+        <div class="content" id="content" aria-live="polite"></div>
+        <div class="flash" id="flash" hidden></div>
+      </div>
+    </div>
+    <script src="island.js"></script>
+  </body>
+</html>
