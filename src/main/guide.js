@@ -129,18 +129,36 @@ class GuideSession extends EventEmitter {
   }
 
   _params() {
-    return {
+    const params = {
       model: this.model,
       max_tokens: 16000,
-      betas: ['server-side-fallback-2026-07-01'],
-      fallbacks: 'default',
       system: SYSTEM_PROMPT,
       tools: TOOLS,
       tool_choice: { type: 'auto', disable_parallel_tool_use: true },
-      output_config: { effort: this.effort },
-      cache_control: { type: 'ephemeral' },
       messages: this.messages,
     };
+    if (this.compat) return params;
+    return {
+      ...params,
+      betas: ['server-side-fallback-2026-07-01'],
+      fallbacks: 'default',
+      output_config: { effort: this.effort },
+      cache_control: { type: 'ephemeral' },
+    };
+  }
+
+  // If the account or model rejects an optional feature (400), fall back once to the plain
+  // request shape for the rest of the session rather than leaving the person stranded.
+  async _create() {
+    try {
+      return await this.client.beta.messages.create(this._params());
+    } catch (err) {
+      if (err && err.status === 400 && !this.compat) {
+        this.compat = true;
+        return this.client.beta.messages.create(this._params());
+      }
+      throw err;
+    }
   }
 
   async _send(content, shot) {
@@ -153,7 +171,7 @@ class GuideSession extends EventEmitter {
 
     let response;
     try {
-      response = await this.client.beta.messages.create(this._params());
+      response = await this._create();
     } catch (err) {
       this.messages.pop(); // keep history valid; retry() re-sends the same turn
       this.failed = { content, shot };

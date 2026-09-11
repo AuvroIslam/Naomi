@@ -236,10 +236,12 @@ function render(s) {
   view.scrollTop = 0;
 
   statusEl.textContent = STATUS[s.phase] || STATUS.home;
-  $('#btnStop').hidden = ['home', 'setup'].includes(s.phase) || (s.phase === 'finish');
+  const inTask = !['home', 'setup', 'finish'].includes(s.phase);
+  $('#btnStop').hidden = !inTask;
+  $('#btnSettings').hidden = inTask; // keep the header roomy mid-task
   avatar.classList.toggle('thinking', s.phase === 'thinking');
   avatar.classList.toggle('happy', s.phase === 'finish' && s.success);
-  input.placeholder = s.phase === 'home' ? 'Or type what you need…' : s.phase === 'ask' ? 'Type your answer…' : 'Tell Naomi…';
+  input.placeholder = s.phase === 'ask' ? 'Your answer…' : 'Type here…';
 
   if (s.phase === 'ask') speak(s.question);
   else if (['point', 'keys', 'finish', 'error'].includes(s.phase)) speak(s.say);

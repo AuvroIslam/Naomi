@@ -168,6 +168,21 @@ test('stop() silences a session mid-request', async () => {
   assert.equal(emitted, false);
 });
 
+test('a 400 on optional features falls back once to the plain request shape', async () => {
+  const bad = Object.assign(new Error('unsupported parameter'), { status: 400 });
+  const client = fakeClient([bad, toolUse('t1', 'ask_user', { question: 'Q', choices: [] })]);
+  const s = new GuideSession({ client, capture: async () => fakeShot() });
+  const asked = once(s, 'ask');
+  await s.start('x');
+  await asked;
+  assert.equal(s.compat, true);
+  assert.equal(client.calls[0].fallbacks, 'default');
+  assert.equal(client.calls[1].fallbacks, undefined);
+  assert.equal(client.calls[1].betas, undefined);
+  assert.equal(client.calls[1].output_config, undefined);
+  assert.equal(client.calls[1].tools.length, 4);
+});
+
 test('classifyError maps statuses to friendly kinds', () => {
   assert.equal(classifyError({ status: 401 }).kind, 'auth');
   assert.equal(classifyError({ status: 429 }).kind, 'busy');

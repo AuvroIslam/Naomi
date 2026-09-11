@@ -60,7 +60,8 @@ function createPanel() {
       sandbox: true,
     },
   });
-  panel.setAlwaysOnTop(true, 'floating');
+  // Above other always-on-top windows (video-call popouts etc.), just below the pointer overlay.
+  panel.setAlwaysOnTop(true, 'pop-up-menu');
   panel.loadFile(path.join(__dirname, '..', 'renderer', 'panel', 'index.html'));
   panel.once('ready-to-show', () => panel.show());
   panel.on('closed', () => app.quit());

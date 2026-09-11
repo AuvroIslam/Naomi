@@ -8,6 +8,7 @@
   "scripts": {
     "start": "node scripts/start.js",
     "mock": "node scripts/start.js --mock",
+    "check": "node scripts/check-api.js",
     "test": "node --test \"test/*.test.js\""
   },
   "dependencies": {
