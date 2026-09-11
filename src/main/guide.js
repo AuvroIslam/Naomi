@@ -211,11 +211,19 @@ class GuideSession extends EventEmitter {
     if (this.stopped) return;
 
     // Append the full content unchanged (thinking blocks included) — history stays append-only.
-    this.messages.push({ role: 'assistant', content: response.content });
+    // An empty reply is stored as a placeholder: APIs reject empty assistant turns on the next request.
+    const reply = response.content && response.content.length ? response.content : [{ type: 'text', text: '(no reply)' }];
+    this.messages.push({ role: 'assistant', content: reply });
     await this._handle(response, shot);
   }
 
   async _handle(response, shot) {
+    if (process.env.NAOMI_DEBUG) {
+      const summary = response.content
+        .map((b) => (b.type === 'tool_use' ? `${b.name} ${JSON.stringify(b.input)}` : b.type === 'text' ? `text ${JSON.stringify(b.text)}` : b.type))
+        .join(' | ');
+      console.log(`[naomi] ${response.stop_reason}: ${summary || '(empty)'}`);
+    }
     if (response.stop_reason === 'refusal') {
       this.emit('finish', {
         say: "I'm sorry, I can't help with that one. Is there something else we can do?",
@@ -233,8 +241,23 @@ class GuideSession extends EventEmitter {
       .trim();
 
     if (!tool) {
+      // After an aim check some models reply in words ("Yes, that's on it") instead of pointing
+      // again: show the point they already chose. That call was already answered, so the next
+      // observation goes as plain words (pending = null).
+      if (this.aimChecked) {
+        const original = [...this.messages]
+          .reverse()
+          .flatMap((m) => (m.role === 'assistant' && Array.isArray(m.content) ? m.content : []))
+          .find((b) => b.type === 'tool_use' && b.name === 'point');
+        if (original) {
+          this.lastZoom = null;
+          await this._handle({ stop_reason: 'tool_use', content: [original] }, shot);
+          this.pending = null;
+          return;
+        }
+      }
       // Some models answer in plain words ("Done — Edge is open.") instead of calling a tool.
-      // Ask once for a proper tool call; if it still talks, treat it as an open question.
+      // Ask once for a proper tool call; if it still talks, treat its words as an open question.
       if (!this.nudgedForTool) {
         this.nudgedForTool = true;
         await this._send(
@@ -243,7 +266,15 @@ class GuideSession extends EventEmitter {
         );
         return;
       }
-      this.emit('ask', { question: text || 'Could you tell me a little more?', choices: [] });
+      if (!text) {
+        this.failed = {
+          content: [{ type: 'text', text: 'Please look at the screen again and keep guiding the person with one of your tools.' }],
+          shot,
+        };
+        this.emit('error', { kind: 'unknown', message: "I lost my place for a moment. Let's try that again." });
+        return;
+      }
+      this.emit('ask', { question: text, choices: [] });
       return;
     }
     this.nudgedForTool = false;
@@ -255,6 +286,7 @@ class GuideSession extends EventEmitter {
       return;
     }
     this.zoomsInARow = 0;
+    if (tool.name !== 'point') this.aimChecked = false;
 
     switch (tool.name) {
       case 'ask_user':
