@@ -70,7 +70,7 @@ flowchart LR
 
 ## Getting started
 
-Requirements: Windows 10/11, Node.js 20+, and a [Claude API key](https://console.anthropic.com/).
+Requirements: Windows 10/11, Node.js 20+, and an API key from any one of the AI providers below.
 
 ```bash
 git clone https://github.com/AuvroIslam/Naomi.git
@@ -79,11 +79,20 @@ npm install
 npm start
 ```
 
-On first use Naomi asks for a Claude API key (a family member can paste it once — it's encrypted with Windows' own credential protection). Developers can instead create a `.env` file:
+On first use Naomi asks for a key (a family member can paste it once — keys are encrypted with Windows' own credential protection). Developers can instead copy `.env.example` to `.env`.
 
-```
-ANTHROPIC_API_KEY=sk-ant-...
-```
+### Choose your AI
+
+Naomi tries every provider you've given a key for, **in this order**, and quietly moves on if one isn't available (bad key, no credit, model busy):
+
+| # | Provider | Model | Key | Cost |
+|---|---|---|---|---|
+| 1 | OpenAI | `gpt-5.4-mini` | `OPENAI_API_KEY` | paid |
+| 2 | DeepSeek | `deepseek-v4-flash-vision-exp` (DeepSeek's vision model, experimental) | `DEEPSEEK_API_KEY` | paid, cheap |
+| 3 | Google | `gemini-3.6-flash`, then `gemma-4-31b-it` | `GEMINI_API_KEY` | **free tier** ([get a key](https://aistudio.google.com/apikey)) |
+| 4 | Anthropic | `claude-opus-5` | `ANTHROPIC_API_KEY` | paid |
+
+**No money? Use Google.** Gemini Flash is free, sees screenshots well, and is the best free option for precise pointing (Gemma 4 is the backup on the same free key). Models can be swapped with `NAOMI_OPENAI_MODEL`, `NAOMI_DEEPSEEK_MODEL`, `NAOMI_GOOGLE_MODEL`.
 
 | Command | What it does |
 |---|---|

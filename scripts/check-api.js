@@ -1,10 +1,11 @@
-// Smoke test for the live Claude connection: `npm run check`.
-// Sends Naomi's real prompt + tools with a small synthetic "screen" and prints what she decides.
+// Checks every AI provider you've set a key for: `npm run check`.
+// Sends Naomi's real prompt + tools with a small synthetic "screen" to each, in fallback order.
 const path = require('node:path');
 const zlib = require('node:zlib');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env'), quiet: true });
 const AnthropicModule = require('@anthropic-ai/sdk');
-const { GuideSession, DEFAULT_MODEL } = require('../src/main/guide');
+const { GuideSession } = require('../src/main/guide');
+const { PROVIDERS, keysFromEnv, buildLinks } = require('../src/main/providers');
 
 const Anthropic = AnthropicModule.default || AnthropicModule;
 
@@ -52,26 +53,60 @@ function fakeScreen(w = 640, h = 400) {
   return { base64: png.toString('base64'), mediaType: 'image/png', width: w, height: h, toScreen: (p) => p, toImage: (p) => p };
 }
 
-async function main() {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    console.error('Set ANTHROPIC_API_KEY in .env (or your environment) first.');
-    process.exit(1);
-  }
-  const session = new GuideSession({
-    client: new Anthropic(),
-    capture: async () => fakeScreen(),
-    model: process.env.NAOMI_MODEL || DEFAULT_MODEL,
-    effort: process.env.NAOMI_EFFORT || 'low',
-  });
+async function tryLink(link) {
+  let lastErr = null;
+  const client = {
+    beta: {
+      messages: {
+        create: async (params) => {
+          try {
+            return await link.client.beta.messages.create(params);
+          } catch (err) {
+            lastErr = err;
+            throw err;
+          }
+        },
+      },
+    },
+  };
+  const session = new GuideSession({ client, capture: async () => fakeScreen(), effort: 'low' });
   const started = Date.now();
   const result = new Promise((resolve) => {
     for (const evt of ['ask', 'point', 'keys', 'finish', 'error']) session.on(evt, (data) => resolve({ evt, data }));
+    setTimeout(() => resolve({ evt: 'error', data: { message: 'timed out after 90s' } }), 90_000);
   });
   await session.start('How do I send an email to my granddaughter?');
   const { evt, data } = await result;
-  console.log(`Naomi chose: ${evt} (${Date.now() - started} ms)${session.compat ? ' [compat mode]' : ''}`);
-  console.log(JSON.stringify(data, null, 2));
-  process.exit(evt === 'error' ? 1 : 0);
+  session.stop();
+  return { ok: evt !== 'error', evt, data, ms: Date.now() - started, err: lastErr };
+}
+
+async function main() {
+  const keys = keysFromEnv();
+  const links = buildLinks(keys, { Anthropic });
+  if (!links.length) {
+    console.error('No AI keys found. Add at least one to .env:');
+    for (const p of PROVIDERS) console.error(`  ${p.env[0]}=...`);
+    console.error('Google Gemini is free: https://aistudio.google.com/apikey');
+    process.exit(1);
+  }
+
+  let first = null;
+  for (const link of links) {
+    process.stdout.write(`… ${link.name}: `);
+    const r = await tryLink(link);
+    if (r.ok) {
+      if (!first) first = link.name;
+      const what = r.evt === 'point' ? `point at (${r.data.image.x}, ${r.data.image.y})` : r.evt;
+      console.log(`✓ works — Naomi chose ${what} (${r.ms} ms)`);
+      console.log(`   "${r.data.question || r.data.say || ''}"`);
+    } else {
+      const status = r.err && r.err.status ? `${r.err.status} ` : '';
+      console.log(`✗ ${status}${(r.err && r.err.message) || r.data.message}`.slice(0, 220));
+    }
+  }
+  console.log(first ? `\nNaomi will use: ${first} (falling back in the order above).` : '\nNo provider worked — check the keys above.');
+  process.exit(first ? 0 : 1);
 }
 
 main();

@@ -469,6 +469,53 @@ body.bottom .content {
   user-select: text;
 }
 
+/* long content (settings) scrolls inside the island */
+.content {
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+/* AI provider picker + key rows */
+.provider-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.provider {
+  border: 1.5px solid var(--line);
+  background: var(--ink-2);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 0.8em;
+  font-weight: 700;
+}
+.provider.on {
+  border-color: var(--coral);
+  background: rgba(255, 106, 77, 0.18);
+}
+.free {
+  margin-left: 6px;
+  background: rgba(34, 181, 115, 0.2);
+  color: #6fe0ac;
+  border-radius: 999px;
+  padding: 0 7px;
+  font-size: 0.8em;
+  font-weight: 800;
+}
+.key-opt .key-name {
+  width: 130px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  font-weight: 700;
+}
+.key-opt .key-name small {
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 0.8em;
+}
+
 /* short-lived "Good!" / nudge banner over the island */
 .flash {
   position: absolute;

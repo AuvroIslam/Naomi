@@ -1,8 +1,9 @@
-// Small persistent settings store. The API key is encrypted with the OS keychain when possible.
+// Small persistent settings store. API keys are encrypted with the OS keychain when possible.
 
 const fs = require('node:fs');
 const path = require('node:path');
 const { app, safeStorage } = require('electron');
+const { PROVIDERS, keysFromEnv } = require('./providers');
 
 const DEFAULTS = {
   voice: true,
@@ -28,42 +29,60 @@ function writeRaw(data) {
   fs.writeFileSync(file(), JSON.stringify(data, null, 2));
 }
 
-function getApiKey() {
-  if (process.env.ANTHROPIC_API_KEY) return process.env.ANTHROPIC_API_KEY;
-  const raw = readRaw();
-  if (!raw.apiKey) return '';
+function seal(value) {
+  if (safeStorage.isEncryptionAvailable()) {
+    return { value: safeStorage.encryptString(value).toString('base64'), encrypted: true };
+  }
+  return { value, encrypted: false };
+}
+
+function unseal(entry) {
+  if (!entry || !entry.value) return '';
   try {
-    return raw.apiKeyEncrypted && safeStorage.isEncryptionAvailable()
-      ? safeStorage.decryptString(Buffer.from(raw.apiKey, 'base64'))
-      : raw.apiKey;
+    return entry.encrypted ? safeStorage.decryptString(Buffer.from(entry.value, 'base64')) : entry.value;
   } catch {
     return '';
   }
 }
 
-function setApiKey(key) {
+// Earlier versions stored a single Claude key at the top level.
+function storedKeys(raw) {
+  const keys = { ...(raw.keys || {}) };
+  if (raw.apiKey && !keys.anthropic) keys.anthropic = { value: raw.apiKey, encrypted: !!raw.apiKeyEncrypted };
+  return keys;
+}
+
+// { openai, deepseek, google, anthropic } — environment variables (.env) win over saved keys.
+function getKeys() {
+  const env = keysFromEnv();
+  const stored = storedKeys(readRaw());
+  const keys = {};
+  for (const p of PROVIDERS) keys[p.id] = env[p.id] || unseal(stored[p.id]);
+  return keys;
+}
+
+function setApiKey(key, provider = 'anthropic') {
+  if (!PROVIDERS.some((p) => p.id === provider)) return;
   const raw = readRaw();
+  raw.keys = storedKeys(raw);
+  delete raw.apiKey;
+  delete raw.apiKeyEncrypted;
   const trimmed = (key || '').trim();
-  if (!trimmed) {
-    delete raw.apiKey;
-    delete raw.apiKeyEncrypted;
-  } else if (safeStorage.isEncryptionAvailable()) {
-    raw.apiKey = safeStorage.encryptString(trimmed).toString('base64');
-    raw.apiKeyEncrypted = true;
-  } else {
-    raw.apiKey = trimmed;
-    raw.apiKeyEncrypted = false;
-  }
+  if (trimmed) raw.keys[provider] = seal(trimmed);
+  else delete raw.keys[provider];
   writeRaw(raw);
 }
 
-// Preferences safe to hand to the renderer (never includes the key itself).
+// Preferences safe to hand to the renderer (never includes the keys themselves).
 function getPrefs() {
   const raw = readRaw();
   const prefs = {};
   for (const k of Object.keys(DEFAULTS)) prefs[k] = raw[k] ?? DEFAULTS[k];
-  prefs.hasApiKey = !!getApiKey();
-  prefs.keyFromEnv = !!process.env.ANTHROPIC_API_KEY;
+  const env = keysFromEnv();
+  const stored = storedKeys(raw);
+  prefs.keys = {};
+  for (const p of PROVIDERS) prefs.keys[p.id] = env[p.id] ? 'env' : unseal(stored[p.id]) ? 'saved' : null;
+  prefs.hasApiKey = Object.values(prefs.keys).some(Boolean);
   return prefs;
 }
 
@@ -74,4 +93,4 @@ function setPrefs(patch) {
   return getPrefs();
 }
 
-module.exports = { getApiKey, setApiKey, getPrefs, setPrefs };
+module.exports = { getKeys, setApiKey, getPrefs, setPrefs };

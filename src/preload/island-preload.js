@@ -14,7 +14,7 @@ contextBridge.exposeInMainWorld('naomi', {
   getState: () => invoke('naomi:state:get'),
   getPrefs: () => invoke('naomi:prefs:get'),
   setPrefs: (patch) => invoke('naomi:prefs:set', patch),
-  setApiKey: (key) => invoke('naomi:key:set', key),
+  setApiKey: (key, provider) => invoke('naomi:key:set', { key, provider }),
   clearMemory: () => invoke('naomi:memory:clear'),
   voiceType: () => invoke('naomi:voice-type'),
   windowAction: (action) => invoke('naomi:window', action),

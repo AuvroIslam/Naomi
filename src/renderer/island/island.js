@@ -6,7 +6,7 @@ const island = $('#island');
 const content = $('#content');
 const flash = $('#flash');
 
-let prefs = { voice: true, textSize: 'large', spotlight: true, hasApiKey: false, memoryCount: 0 };
+let prefs = { voice: true, textSize: 'large', spotlight: true, hasApiKey: false, memoryCount: 0, keys: {} };
 let state = { phase: 'home' };
 let collapsed = false; // home shown as the small "Ask Naomi" pill
 let settingsOpen = false;
@@ -14,6 +14,7 @@ let lastUserText = '';
 let interactive = false;
 let flashTimer = null;
 let collapseTimer = null;
+let setupProvider = 'google';
 
 const TASKS = [
   { emoji: '✉️', label: 'Send an email', goal: 'I want to send an email' },
@@ -22,6 +23,14 @@ const TASKS = [
   { emoji: '🖨️', label: 'Print something', goal: 'I want to print a document' },
   { emoji: '🖼️', label: 'Save a picture', goal: 'How do I download this picture?' },
   { emoji: '📎', label: 'Attach a file', goal: 'How do I attach a file to an email?' },
+];
+
+// Listed in the order Naomi tries them.
+const PROVIDERS = [
+  { id: 'openai', label: 'OpenAI', hint: 'Get a key at platform.openai.com/api-keys' },
+  { id: 'deepseek', label: 'DeepSeek', hint: 'Get a key at platform.deepseek.com' },
+  { id: 'google', label: 'Google Gemini', tag: 'Free', hint: 'Free key at aistudio.google.com/apikey' },
+  { id: 'anthropic', label: 'Claude', hint: 'Get a key at console.anthropic.com' },
 ];
 
 const WIDTH = { idle: 250, compact: 480, expanded: 560 };
@@ -124,6 +133,11 @@ function stopButton() {
   return iconBtn('✕', 'Stop', goHome);
 }
 
+function keyStatus(id) {
+  const k = prefs.keys && prefs.keys[id];
+  return k === 'env' ? 'from .env' : k === 'saved' ? 'saved ✓' : 'not set';
+}
+
 // ---------- screens ----------
 const renderers = {
   home() {
@@ -223,20 +237,58 @@ const renderers = {
     ];
   },
 
+  // No key yet (or every key failed): pick a provider and paste its key.
   setup(s) {
-    const key = h('input', { type: 'password', placeholder: 'Paste a Claude API key (sk-ant-…)', autocomplete: 'off' });
+    const chosen = PROVIDERS.find((p) => p.id === setupProvider) || PROVIDERS[2];
+    const key = h('input', { type: 'password', placeholder: `Paste your ${chosen.label} key`, autocomplete: 'off' });
     const save = async () => {
       if (!key.value.trim()) return key.focus();
-      applyPrefs(await window.naomi.setApiKey(key.value));
+      applyPrefs(await window.naomi.setApiKey(key.value, chosen.id));
       if (s.goal) begin(s.goal);
       else goHome();
       return undefined;
     };
     key.addEventListener('keydown', (e) => e.key === 'Enter' && save());
+    const picker = h(
+      'div',
+      { class: 'provider-picker' },
+      PROVIDERS.map((p) =>
+        h(
+          'button',
+          {
+            class: `provider${p.id === chosen.id ? ' on' : ''}`,
+            onclick: () => {
+              setupProvider = p.id;
+              render(state);
+            },
+          },
+          p.label,
+          p.tag ? h('span', { class: 'free' }, p.tag) : null,
+        ),
+      ),
+    );
     return [
-      h('div', { class: 'row top' }, face('', true), h('div', { class: 'grow' }, h('div', { class: 'say' }, 'Naomi needs to be switched on first.'), h('div', { class: 'muted', style: 'margin:4px 0 0' }, s.say || 'A family member can paste a Claude API key here once.')), stopButton()),
+      h(
+        'div',
+        { class: 'row top' },
+        face('', true),
+        h(
+          'div',
+          { class: 'grow' },
+          h('div', { class: 'say' }, 'Naomi needs an AI key to see your screen.'),
+          h('div', { class: 'muted', style: 'margin:4px 0 0' }, s.say || 'Any one of these works. Google Gemini is free.'),
+        ),
+        stopButton(),
+      ),
+      picker,
       h('div', { class: 'input-row settings' }, key, btn('Switch on', save, 'coral')),
-      h('p', { class: 'muted' }, 'No key yet? ', h('a', { href: '#', style: 'color:#ff9f8a', onclick: (e) => { e.preventDefault(); window.naomi.practice(); } }, 'Try a safe practice run instead.')),
+      h('p', { class: 'muted' }, chosen.hint),
+      h(
+        'p',
+        { class: 'muted' },
+        'No key at all? ',
+        h('a', { href: '#', style: 'color:#ff9f8a', onclick: (e) => { e.preventDefault(); window.naomi.practice(); } }, 'Try a safe practice run.'),
+      ),
     ];
   },
 };
@@ -248,7 +300,19 @@ function renderSettings() {
     box.addEventListener('change', () => onchange(box.checked));
     return h('label', { class: 'row-opt' }, h('span', {}, label), box);
   };
-  const key = h('input', { type: 'password', placeholder: prefs.keyFromEnv ? 'Set from .env' : prefs.hasApiKey ? 'Saved ✓ — paste to replace' : 'sk-ant-…', autocomplete: 'off' });
+  const keyRow = (p) => {
+    const input = h('input', { type: 'password', placeholder: keyStatus(p.id) === 'not set' ? 'paste key' : 'paste to replace', autocomplete: 'off' });
+    return h(
+      'div',
+      { class: 'row-opt key-opt' },
+      h('span', { class: 'key-name' }, p.label, p.tag ? h('span', { class: 'free' }, p.tag) : null, h('small', {}, keyStatus(p.id))),
+      input,
+      btn('Save', async () => {
+        applyPrefs(await window.naomi.setApiKey(input.value, p.id));
+        render(state);
+      }, 'small coral'),
+    );
+  };
   return [
     row(face(), h('div', { class: 'title grow' }, 'Settings'), iconBtn('✕', 'Close settings', closeSettings)),
     h(
@@ -266,15 +330,8 @@ function renderSettings() {
           render(state);
         }, 'small'),
       ),
-      h(
-        'div',
-        { class: 'row-opt' },
-        key,
-        btn('Save key', async () => {
-          applyPrefs(await window.naomi.setApiKey(key.value));
-          render(state);
-        }, 'small coral'),
-      ),
+      h('p', { class: 'muted' }, 'AI keys — Naomi tries them in this order and uses the first that works:'),
+      PROVIDERS.map(keyRow),
     ),
     h('p', { class: 'muted' }, 'Press Ctrl + Alt + N any time to bring Naomi back.'),
   ];
@@ -283,8 +340,10 @@ function renderSettings() {
 // ---------- layout: morph the island to fit what it's showing ----------
 function morph(kind) {
   const width = Math.min(WIDTH[kind], window.innerWidth - 24);
+  const maxHeight = window.innerHeight - 24;
   content.style.width = `${width}px`;
-  const height = Math.min(content.scrollHeight, window.innerHeight - 24);
+  content.style.maxHeight = `${maxHeight}px`;
+  const height = Math.min(content.scrollHeight, maxHeight);
   island.style.width = `${width}px`;
   island.style.height = `${height}px`;
   const bottom = document.body.classList.contains('bottom');
@@ -392,6 +451,8 @@ window.naomi.onFeedback((fb) => {
     setTimeout(() => island.classList.remove('good'), 1200);
     showFlash(fb.then === 'type' ? '👍 Good! Now type.' : '👍 Good!');
     speak(fb.then === 'type' ? 'Good. Now type.' : 'Good.');
+  } else if (fb.type === 'provider') {
+    showFlash(`One moment — switching to ${fb.to}…`, true, 2500);
   } else if (fb.type === 'nudge') {
     island.classList.remove('shake');
     void island.offsetWidth;

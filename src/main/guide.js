@@ -254,8 +254,30 @@ class GuideSession extends EventEmitter {
         });
         break;
       case 'point': {
+        if (!Number.isFinite(Number(input.x)) || !Number.isFinite(Number(input.y))) {
+          // Some models occasionally leave out coordinates: ask again (twice at most) rather than guess.
+          this.badPoints = (this.badPoints || 0) + 1;
+          if (this.badPoints > 2) {
+            this.emit('error', { kind: 'unknown', message: "I got a bit mixed up. Let's try that again." });
+            return;
+          }
+          await this._send(
+            [
+              {
+                type: 'tool_result',
+                tool_use_id: tool.id,
+                is_error: true,
+                content: [{ type: 'text', text: 'x and y must be whole numbers: pixel coordinates in the latest screenshot. Please call point again.' }],
+              },
+            ],
+            shot,
+          );
+          return;
+        }
+        this.badPoints = 0;
         this.steps++;
-        let { x, y } = input;
+        let x = Number(input.x);
+        let y = Number(input.y);
         if (input.from_zoom && this.lastZoom) {
           const z = this.lastZoom;
           x = z.region.x + (x * z.region.width) / z.width;

@@ -11,12 +11,13 @@ const { ActionWatcher } = require('./watcher');
 const { captureForClaude, captureRegion, captureSignature, screenToShot, primaryDisplay } = require('./capture');
 const { createPracticeWindow, locateIn } = require('./practice');
 const { createPracticeClient } = require('./practiceClient');
+const { buildLinks, createChainClient } = require('./providers');
 const { pointInRect } = require('./geometry');
 
 const Anthropic = AnthropicModule.default || AnthropicModule;
 // The island window is mostly transparent and click-through; the pill inside it morphs.
 const ISLAND_W = 600;
-const ISLAND_H = 480;
+const ISLAND_H = 600;
 const SUMMON_KEY = 'CommandOrControl+Alt+N';
 const PRACTICE_GOAL = 'Practice: send an email to my granddaughter';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -34,6 +35,7 @@ let pillRect = null; // screen DIP rect of the visible pill, reported by the ren
 let pointerAt = null; // screen DIP point where the dot currently rests
 let lastPoint = null; // last pointer message, for "show me again"
 let lastState = { phase: 'home' };
+const providerHealth = new Map(); // AI providers that failed recently are skipped for a while
 
 // ---------- windows ----------
 
@@ -71,8 +73,8 @@ function createIsland() {
     },
   });
   island.setIgnoreMouseEvents(true, { forward: true });
-  // Also track the cursor from here, so the pill is clickable the instant the mouse is on it
-  // (the renderer's hover events alone can lose a very quick click to the app underneath).
+  // Track the cursor from here, so the pill is clickable the instant the mouse is on it
+  // and everything around it stays click-through.
   let overPill = false;
   const hoverTimer = setInterval(() => {
     if (!island || island.isDestroyed() || !pillRect) return;
@@ -229,7 +231,7 @@ async function startPractice() {
 
 // ---------- seeing the screen ----------
 
-// Hide Naomi (island + dot) for a blink so Claude sees the person's screen, not Naomi.
+// Hide Naomi (island + dot) for a blink so the AI sees the person's screen, not Naomi.
 async function withNaomiHidden(fn) {
   const wins = [overlay, island].filter((w) => w && !w.isDestroyed());
   for (const w of wins) w.setOpacity(0);
@@ -276,10 +278,18 @@ function startInputHook() {
 
 // ---------- sessions ----------
 
+// OpenAI -> DeepSeek -> Google (Gemini Flash, then Gemma) -> Claude: whichever keys are set.
 function makeClient() {
   if (process.env.NAOMI_MOCK || process.argv.includes('--mock')) return require('./mockClient').createMockClient();
-  const apiKey = settings.getApiKey();
-  return apiKey ? new Anthropic({ apiKey }) : null;
+  const links = buildLinks(settings.getKeys(), { Anthropic });
+  if (!links.length) return null;
+  return createChainClient(links, {
+    health: providerHealth,
+    onSwitch: (to, from, err) => {
+      console.warn(`[naomi] ${from} unavailable (${(err && (err.status || err.message)) || 'error'}); trying ${to}`);
+      sendFeedback({ type: 'provider', to });
+    },
+  });
 }
 
 function hidePointer() {
@@ -428,8 +438,10 @@ function wireIpc() {
     overlaySend({ type: 'prefs', spotlight: prefs.spotlight });
     return prefsForRenderer();
   });
-  ipcMain.handle('naomi:key:set', (_e, key) => {
-    settings.setApiKey(String(key || ''));
+  ipcMain.handle('naomi:key:set', (_e, payload) => {
+    const { provider, key } = payload && typeof payload === 'object' ? payload : { provider: 'anthropic', key: payload };
+    settings.setApiKey(String(key || ''), String(provider || 'anthropic'));
+    providerHealth.clear(); // a new key deserves a fresh try
     return prefsForRenderer();
   });
   ipcMain.handle('naomi:memory:clear', () => {
