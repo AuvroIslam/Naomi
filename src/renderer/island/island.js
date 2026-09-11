@@ -35,9 +35,17 @@ const EMOJI = /[\p{Extended_Pictographic}\u{FE0F}\u{200D}]/gu;
 const clean = (text) => String(text || '').replace(EMOJI, '').replace(/\s{2,}/g, ' ').trim();
 
 // ---------- hover tracking ----------
-// The main process decides click-through from the cursor position; here we only remember
-// whether the person is hovering (so we don't auto-collapse under their mouse).
-document.addEventListener('mousemove', (e) => (interactive = island.contains(e.target)));
+// The main process polls the cursor to decide click-through; the page also tells it the moment
+// the mouse moves onto the island, so even a quick click lands on Naomi. We also remember whether
+// the person is hovering (so we don't auto-collapse under their mouse).
+let lastHoverPing = 0;
+document.addEventListener('mousemove', (e) => {
+  interactive = island.contains(e.target);
+  if (interactive && Date.now() - lastHoverPing > 40) {
+    lastHoverPing = Date.now();
+    window.naomi.hoverPill();
+  }
+});
 document.addEventListener('mouseleave', () => (interactive = false));
 
 // ---------- tiny DOM helper ----------

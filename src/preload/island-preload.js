@@ -19,6 +19,7 @@ contextBridge.exposeInMainWorld('naomi', {
   windowAction: (action) => invoke('naomi:window', action),
   // island window plumbing
   reportRect: (rect) => ipcRenderer.send('naomi:island-rect', rect),
+  hoverPill: () => ipcRenderer.send('naomi:hover-pill'),
   onState: (cb) => ipcRenderer.on('naomi:state', (_e, state) => cb(state)),
   onFeedback: (cb) => ipcRenderer.on('naomi:feedback', (_e, fb) => cb(fb)),
   onDock: (cb) => ipcRenderer.on('naomi:dock', (_e, side) => cb(side)),

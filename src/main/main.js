@@ -73,17 +73,31 @@ function createIsland() {
     },
   });
   island.setIgnoreMouseEvents(true, { forward: true });
-  // Track the cursor from here, so the pill is clickable the instant the mouse is on it
-  // and everything around it stays click-through.
+  // Click-through everywhere except the pill. The cursor is polled here, and the page also reports
+  // the moment the mouse moves onto the pill, so even a quick click lands on Naomi. Only the page's
+  // signal makes the pill clickable early; polling won't undo it for a moment afterwards.
   let overPill = false;
+  let lastHoverPing = 0;
+  const setOverPill = (over) => {
+    if (over === overPill || !island || island.isDestroyed()) return;
+    overPill = over;
+    island.setIgnoreMouseEvents(!over, { forward: true });
+  };
   const hoverTimer = setInterval(() => {
     if (!island || island.isDestroyed() || !pillRect) return;
     const over = pointInRect(screen.getCursorScreenPoint(), pillRect);
-    if (over === overPill) return;
-    overPill = over;
-    island.setIgnoreMouseEvents(!over, { forward: true });
-  }, 50);
-  island.on('closed', () => clearInterval(hoverTimer));
+    if (!over && Date.now() - lastHoverPing < 150) return; // the page just saw the mouse on the pill
+    setOverPill(over);
+  }, 16);
+  const onHoverPill = () => {
+    lastHoverPing = Date.now();
+    setOverPill(true);
+  };
+  ipcMain.on('naomi:hover-pill', onHoverPill);
+  island.on('closed', () => {
+    clearInterval(hoverTimer);
+    ipcMain.removeListener('naomi:hover-pill', onHoverPill);
+  });
   island.setAlwaysOnTop(true, 'pop-up-menu');
   island.loadFile(path.join(__dirname, '..', 'renderer', 'island', 'index.html'));
   island.once('ready-to-show', () => island.show());
