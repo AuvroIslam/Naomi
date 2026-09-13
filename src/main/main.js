@@ -2,7 +2,7 @@ const path = require('node:path');
 require('dotenv').config({ path: path.join(__dirname, '..', '..', '.env'), quiet: true });
 
 const { EventEmitter } = require('node:events');
-const { app, BrowserWindow, ipcMain, screen, globalShortcut } = require('electron');
+const { app, BrowserWindow, ipcMain, screen, globalShortcut, session } = require('electron');
 const AnthropicModule = require('@anthropic-ai/sdk');
 const settings = require('./settings');
 const { createMemory } = require('./memory');
@@ -493,6 +493,14 @@ if (!app.requestSingleInstanceLock()) {
   app.on('second-instance', summon);
 
   app.whenReady().then(() => {
+    session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+      callback({
+        responseHeaders: {
+          ...details.responseHeaders,
+          'Content-Security-Policy': ["default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'"],
+        },
+      });
+    });
     memory = createMemory(path.join(app.getPath('userData'), 'memory.json'));
     const input = startInputHook();
     wireWatcher(input);
