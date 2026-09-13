@@ -2,86 +2,82 @@
 
 **You don't need to know how to use a computer. You just need to know what you want to do.**
 
-Naomi is a patient, visual companion for people who find computers hard. Tell her what you want to do. She asks only what she needs, then points at the exact spot on your real screen, one step at a time, until it's done.
+Naomi is a patient, visual companion for people who find computers hard. Tell her what you want to do in your own words. She works out what the task needs, asks only for what's missing, then points at the exact spot on your real screen, one step at a time, until it's done.
+
+She never takes control. You do every click.
+
+![Naomi: you don't need to know how to use a computer](docs/deck/01-naomi.png)
 
 ## Download
 
-Get **Naomi-Setup-0.1.0.exe** from the [Releases](https://github.com/AuvroIslam/Naomi/releases) page, double-click it, and Naomi opens in a few seconds. No account, no setup, no API key to enter.
+Get **Naomi-Setup-0.1.0.exe** from the [Releases](https://github.com/AuvroIslam/Naomi/releases) page and double-click it. No account, no setup, no API key to enter.
 
-Windows may say "Windows protected your PC" because the app isn't signed. Click **More info**, then **Run anyway**.
+Windows may warn that the app is unsigned. Choose **More info**, then **Run anyway**.
+
+Requires Windows 10 or 11. Press **Ctrl + Alt + N** at any time to bring Naomi back.
 
 ## The problem
 
-Millions of people, our parents and grandparents among them, know exactly **what** they want to do:
+Millions of people know exactly what they want to do. What they don't know is how: which app, which button, what an "address bar" is. Tutorials assume the words they don't have. Videos move at someone else's pace. Family isn't always in the room.
 
-> "I want to send an email to my granddaughter."
-
-What they don't know is **how**: which app, which button, what an "address bar" is. Tutorials assume words they don't know. Videos go too fast. Family isn't always around. So they give up, or feel embarrassed to ask.
+![The problem: they know what, not how](docs/deck/02-problem.png)
 
 ## What Naomi does
 
-Naomi feels like a patient person sitting beside you, pointing at the screen.
-
-1. **You say your goal** in your own words, typed or spoken.
-2. **Naomi works out what the task needs.** An email needs an address, so she asks for it. She never asks what you want to write; she simply shows you where to write it.
-3. **An orange dot glides to the exact spot** on your real screen: "Click here to write a new email."
-4. **Naomi watches what you do.** Right click? "Good." Something else? "That's okay. Let's try this one." She adapts to where you are instead of following a script.
-5. **She stays with you until it's actually done**, then celebrates with you.
-
-Naomi never controls your computer. **You** do every click. She just shows you where.
-
-## Highlights
-
-| Feature | What it means |
-|---|---|
-| **Points at your real screen** | Not a tutorial or a simulation. A transparent overlay puts the dot on the actual button in whatever app you're using. |
-| **Understands the whole goal** | Asks for missing information one simple question at a time, and never assumes things you didn't say. |
-| **Sees what you did** | Knows when you clicked, typed, or the screen changed, and checks the result before the next step. |
-| **Looks closer** | Zooms into small or crowded areas and double checks its aim before pointing. |
-| **Understands real apps** | Knows that Gmail turning an address into a contact name means it worked, and that the message goes in the big box, not the Subject line. |
-| **Checks before sending** | Before Send, Pay, Delete, or Install, confirms everything is really in place. |
-| **Remembers for next time** | Saves helpful facts like a family member's email address, only on your computer, erasable in one tap. Never passwords or card numbers. |
-| **Watches out for you** | Gently warns about scams: gift card requests, fake virus popups, strangers asking for remote access. |
-| **Speaks every step** | Reads each instruction aloud in a calm female voice, fully offline. |
-| **Calm, minimal design** | A small dark glass island at the top of the screen, inspired by Apple's Dynamic Island. It grows only when Naomi needs to talk. |
-| **Stays out of the way** | Clicks pass straight through to your apps. Taskbar targets get the dot just above the taskbar with an arrow. |
-| **Safe practice mode** | A pretend email app where first timers can practise. Nothing is really sent. |
+![The solution: a patient person, sitting beside you](docs/deck/03-solution.png)
 
 ## How it works
 
-```mermaid
-flowchart LR
-    U["Person: 'send an email<br/>to my granddaughter'"] --> P[Naomi island]
-    P --> G[Guide session]
-    G -- "screenshot + goal" --> C["Vision AI + tools"]
-    C -- "ask_user / point / zoom_in /<br/>show_keys / finish" --> G
-    G -- "point(x, y)" --> O[Overlay: orange dot + label]
-    O --> S[Person clicks or types in the real app]
-    S --> W["Watcher: input hook +<br/>screen change detection"]
-    W -- "hit / miss / typed / changed<br/>+ fresh screenshot" --> G
-```
+![How it works: one sentence in, one dot out](docs/deck/04-how-it-works.png)
 
-* **Electron** app with two windows: the Naomi island (only the pill takes clicks) and a full screen, click-through overlay that draws the pointer and spotlight above every app.
-* **A vision AI** sees a screenshot and replies with exactly one tool call per turn. Coordinates are mapped from screenshot pixels to real screen positions, DPI aware.
-* **The watcher** listens to global mouse and keyboard events (never what you type) and samples tiny screen fingerprints to know when an action happened and the screen has settled.
-* **Aim check:** before pointing, Naomi looks at a magnified crop of its target to confirm it's on the right element.
+## See it work
+
+A real browser, a real inbox, a real click. Naomi runs above every window, so the dot lands on the button the person is actually looking for.
+
+![Naomi pointing at the Compose button in Gmail](docs/deck/09-demo.png)
+
+One task, start to finish: state the goal, answer a question, follow the dot into Chrome, into Gmail, into the box the address belongs in.
+
+![A full walkthrough of sending an email](docs/deck/10-walkthrough.png)
+
+## Architecture
+
+Two Electron windows: the Naomi island, where only the pill takes clicks, and a full-screen click-through overlay that draws the dot and spotlight above every app. A vision model sees a screenshot and replies with exactly one tool call per turn. Coordinates are mapped from screenshot pixels to real screen positions, DPI aware.
+
+![Architecture: a loop that closes on your screen](docs/deck/05-architecture.png)
+
+The watcher listens to global mouse and keyboard events and samples tiny screen fingerprints, so Naomi knows an action happened and the screen has settled before she moves on. It records only that a key was pressed or where a click landed, never what you typed.
+
+![The hard parts: aiming, zooming, watching, knowing apps](docs/deck/06-engineering.png)
+
+## Tested
+
+![76 of 76 unit tests passing](docs/deck/07-tested.png)
+
+Run them yourself with `npm test`. They need no network and no API key.
+
+## Safety and privacy
+
+![Safety: she points, you decide](docs/deck/08-safety.png)
+
+Screenshots go to the AI provider only to decide the next step; nothing is stored on any server. Memories live in a local file and can be erased from Settings.
 
 ## AI providers
 
-Naomi tries each provider that has a key, in this order, and quietly moves on if one is unavailable:
+Naomi tries each provider that has a key, in this order, and quietly moves on if one is unavailable.
 
 | Order | Provider | Model | Key |
 |---|---|---|---|
 | 1 | OpenAI | `gpt-5.4-mini` | `OPENAI_API_KEY` |
 | 2 | DeepSeek | `deepseek-v4-flash-vision-exp` | `DEEPSEEK_API_KEY` |
-| 3 | Google | `gemini-3.6-flash` (free tier) | `GEMINI_API_KEY` |
+| 3 | Google | `gemini-3.6-flash` | `GEMINI_API_KEY` |
 | 4 | Anthropic | `claude-opus-5` | `ANTHROPIC_API_KEY` |
 
-Any key can have a spare: add `_FALLBACK` to its name (for example `GEMINI_API_KEY_FALLBACK`). People using Naomi are never asked for a key. Whoever builds it fills in `.env` once, and the installer carries it.
+Any key can have a spare: add `_FALLBACK` to its name, for example `GEMINI_API_KEY_FALLBACK`. People using Naomi are never asked for a key. Whoever builds it fills in `.env` once, and the installer carries it.
 
 ## Run from source
 
-Requires Windows 10 or 11 and Node.js 20+.
+Requires Node.js 20 or newer.
 
 ```bash
 git clone https://github.com/AuvroIslam/Naomi.git
@@ -94,27 +90,15 @@ npm start
 | Command | What it does |
 |---|---|
 | `npm start` | Run Naomi |
-| `npm start -- --practice` | Open practice mode |
+| `npm start -- --practice` | Open practice mode, a pretend email app for first-timers |
 | `npm run mock` | Run with a scripted offline brain, for UI work |
 | `npm run check` | One live call to confirm your keys work |
 | `npm test` | Run the unit tests |
 | `npm run dist` | Build the installer and portable app into `dist/` |
 
-Press **Ctrl + Alt + N** any time to bring Naomi back.
-
-## Privacy and safety
-
-* Screenshots go only to the AI provider to decide the next step. Naomi stores nothing on any server.
-* Naomi never clicks or types for you, and never asks for passwords, PINs, or card numbers.
-* The input hook notices only *that* a key was pressed or *where* a click happened, never what you typed.
-* Memories live in a local file and can be erased from Settings.
-
 ## Roadmap
 
-* macOS support
-* Multi-monitor pointing
-* Family helper mode, so a relative can follow along and help remotely
-* More languages
+macOS support. Multi-monitor pointing. A family helper mode, so a relative can follow along and help remotely. More languages.
 
 ## License
 
