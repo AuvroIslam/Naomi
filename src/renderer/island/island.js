@@ -29,7 +29,6 @@ const AI_LABELS = { openai: 'OpenAI', deepseek: 'DeepSeek', google: 'Gemini', an
 
 const WIDTH = { idle: 232, compact: 460, expanded: 540 };
 const SIZE = { home: 'expanded', thinking: 'compact', ask: 'expanded', point: 'compact', keys: 'compact', finish: 'expanded', error: 'expanded', setup: 'expanded' };
-const BANGLA = /[ঀ-৿]/;
 // Naomi's look is plain type — strip any emoji an AI slips into its words.
 const EMOJI = /[\p{Extended_Pictographic}\u{FE0F}\u{200D}]/gu;
 const clean = (text) => String(text || '').replace(EMOJI, '').replace(/\s{2,}/g, ' ').trim();
@@ -87,10 +86,9 @@ if ('speechSynthesis' in window) {
   speechSynthesis.onvoiceschanged = loadVoices;
 }
 
-function pickVoice(text) {
-  const lang = BANGLA.test(text) ? 'bn' : 'en';
+function pickVoice() {
   const female = voices.filter((v) => FEMALE.test(v.name));
-  return female.find((v) => v.lang.toLowerCase().startsWith(lang)) || (lang === 'en' ? female[0] : null) || null;
+  return female.find((v) => v.lang.toLowerCase().startsWith('en')) || female[0] || null;
 }
 
 function speak(raw) {
@@ -101,7 +99,7 @@ function speak(raw) {
     return;
   }
   speechSynthesis.cancel();
-  const voice = pickVoice(text);
+  const voice = pickVoice();
   if (!voice) return; // never fall back to a man's voice
   const u = new SpeechSynthesisUtterance(text);
   u.voice = voice;
