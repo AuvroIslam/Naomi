@@ -116,3 +116,5 @@ macOS support. Multi-monitor pointing. A family helper mode, so a relative can f
 ## License
 
 MIT
+
+![Thank you. Tell her what you want to do; she will show you where.](docs/deck/12-thank-you.b71fdd92.png)
