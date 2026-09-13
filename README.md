@@ -1,10 +1,17 @@
-# Naomi
+<p align="center">
+  <img src="assets/icon.png" width="96" alt="Naomi">
+</p>
 
-**You don't need to know how to use a computer. You just need to know what you want to do.**
+<h1 align="center">Naomi</h1>
+
+<p align="center">
+  <strong>You don't need to know how to use a computer.<br>
+  You just need to know what you want to do.</strong>
+</p>
 
 Naomi is a patient, visual companion for people who find computers hard. Tell her what you want to do in your own words. She works out what the task needs, asks only for what's missing, then points at the exact spot on your real screen, one step at a time, until it's done.
 
-She never takes control. You do every click.
+Ask her the same thing next month and she will answer exactly the same way. She never takes control. You do every click.
 
 ![Naomi: you don't need to know how to use a computer](docs/deck/01-naomi.png)
 
@@ -18,11 +25,17 @@ Requires Windows 10 or 11. Press **Ctrl + Alt + N** at any time to bring Naomi b
 
 ## The problem
 
-Millions of people know exactly what they want to do. What they don't know is how: which app, which button, what an "address bar" is. Tutorials assume the words they don't have. Videos move at someone else's pace. Family isn't always in the room.
+Your grandmother does not need to be taught. She has been taught. You sat down with her last month, showed her how to send an email, and it worked — she followed along fine.
 
-![The problem: they know what, not how](docs/deck/02-problem.png)
+Then the app updated. A button moved. A month went by. Now she needs you again, she knows it, and asking a fifth time is the part that stops her. So she goes without.
+
+Technology keeps moving. Memorising it was never going to work. What she needs is not another lesson; it is someone patient sitting beside her, who never minds being asked again.
+
+![You can teach her today. She'll need you again next month.](docs/deck/02-problem.png)
 
 ## What Naomi does
+
+Naomi is that person, and she is never busy, never rushed, and never tired of the question.
 
 ![The solution: a patient person, sitting beside you](docs/deck/03-solution.png)
 

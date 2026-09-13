@@ -11,3 +11,4 @@ test-output/
 # Deck sources and raw captures; docs/deck holds the exported slides the README uses
 *.pptx
 imagesForslides/
+old-woman.png
