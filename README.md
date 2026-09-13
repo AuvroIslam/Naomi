@@ -13,7 +13,7 @@ Naomi is a patient, visual companion for people who find computers hard. Tell he
 
 Ask her the same thing next month and she will answer exactly the same way. She never takes control. You do every click.
 
-![Naomi: you don't need to know how to use a computer](docs/deck/01-naomi.png)
+![Naomi: you don't need to know how to use a computer](docs/deck/01-naomi.f4e8cb1c.png)
 
 ## Download
 
@@ -31,47 +31,47 @@ Then the app updated. A button moved. A month went by. Now she needs you again, 
 
 Technology keeps moving. Memorising it was never going to work. What she needs is not another lesson; it is someone patient sitting beside her, who never minds being asked again.
 
-![You can teach her today. She'll need you again next month.](docs/deck/02-problem.png)
+![You can teach her today. She'll need you again next month.](docs/deck/02-problem.46068c49.png)
 
 ## What Naomi does
 
 Naomi is that person, and she is never busy, never rushed, and never tired of the question.
 
-![The solution: a patient person, sitting beside you](docs/deck/03-solution.png)
+![The solution: a patient person, sitting beside you](docs/deck/03-solution.b09818aa.png)
 
 ## How it works
 
-![How it works: one sentence in, one dot out](docs/deck/04-how-it-works.png)
+![How it works: one sentence in, one dot out](docs/deck/04-how-it-works.a06b7e9b.png)
 
 ## See it work
 
 A real browser, a real inbox, a real click. Naomi runs above every window, so the dot lands on the button the person is actually looking for.
 
-![Naomi pointing at the Compose button in Gmail](docs/deck/09-demo.png)
+![Naomi pointing at the Compose button in Gmail](docs/deck/09-demo.048b8458.png)
 
 One task, start to finish: state the goal, answer a question, follow the dot into Chrome, into Gmail, into the box the address belongs in.
 
-![A full walkthrough of sending an email](docs/deck/10-walkthrough.png)
+![A full walkthrough of sending an email](docs/deck/10-walkthrough.0f2f6b6f.png)
 
 ## Architecture
 
 Two Electron windows: the Naomi island, where only the pill takes clicks, and a full-screen click-through overlay that draws the dot and spotlight above every app. A vision model sees a screenshot and replies with exactly one tool call per turn. Coordinates are mapped from screenshot pixels to real screen positions, DPI aware.
 
-![Architecture: a loop that closes on your screen](docs/deck/05-architecture.png)
+![Architecture: a loop that closes on your screen](docs/deck/05-architecture.63734666.png)
 
 The watcher listens to global mouse and keyboard events and samples tiny screen fingerprints, so Naomi knows an action happened and the screen has settled before she moves on. It records only that a key was pressed or where a click landed, never what you typed.
 
-![The hard parts: aiming, zooming, watching, knowing apps](docs/deck/06-engineering.png)
+![The hard parts: aiming, zooming, watching, knowing apps](docs/deck/06-engineering.cbf2f226.png)
 
 ## Tested
 
-![76 of 76 unit tests passing](docs/deck/07-tested.png)
+![76 of 76 unit tests passing](docs/deck/07-tested.1a79ded0.png)
 
 Run them yourself with `npm test`. They need no network and no API key.
 
 ## Safety and privacy
 
-![Safety: she points, you decide](docs/deck/08-safety.png)
+![Safety: she points, you decide](docs/deck/08-safety.6a35945b.png)
 
 Screenshots go to the AI provider only to decide the next step; nothing is stored on any server. Memories live in a local file and can be erased from Settings.
 
